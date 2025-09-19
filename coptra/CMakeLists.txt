@@ -274,6 +274,17 @@ catkin_install_python(PROGRAMS src/selfcheck.py src/ros_rtsp_camera.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
+# Install waitfile script
+install(PROGRAMS src/waitfile
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+# Install camera info files
+install(DIRECTORY camera_info/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/camera_info
+  FILES_MATCHING PATTERN "*.yaml"
+)
+
 install(DIRECTORY launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
 install(DIRECTORY examples DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
