@@ -7,7 +7,6 @@
     <arg name="throttled_topic" default="false"/> <!-- enable throttled image topic -->
     <arg name="throttled_topic_rate" default="5.0"/> <!-- throttled image topic rate -->
     <arg name="rectify" default="false"/> <!-- enable rectification -->
-    <arg name="simulator" default="false"/>
     <node if="$(eval direction_z == 'down' and direction_y == 'backward')" pkg="tf2_ros" type="static_transform_publisher" name="main_camera_frame" args="0.05 0 -0.07 -1.5707963 0 3.1415926 base_link main_camera_optical"/>
     <node if="$(eval direction_z == 'down' and direction_y == 'forward')" pkg="tf2_ros" type="static_transform_publisher" name="main_camera_frame" args="0.05 0 -0.07 1.5707963 0 3.1415926 base_link main_camera_optical"/>
     <node if="$(eval direction_z == 'up' and direction_y == 'backward')" pkg="tf2_ros" type="static_transform_publisher" name="main_camera_frame" args="0.05 0 0.07 1.5707963 0 0 base_link main_camera_optical"/>
@@ -21,7 +20,7 @@
     <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="main_camera_frame" args="0.05 0 -0.07 -1.5707963 0 3.1415926 base_link main_camera_optical"/> -->
 
     <!-- RTSP camera node -->
-    <node pkg="coptra" type="ros_rtsp_camera.py" name="main_camera" unless="$(arg simulator)" respawn="true" output="screen">
+    <node pkg="coptra" type="ros_rtsp_camera.py" name="main_camera" respawn="true" output="screen">
         <param name="frame_id" value="main_camera_optical"/>
         <param name="camera_info_url" value="file://$(find coptra)/camera_info/fisheye_cam.yaml"/>
         <remap from="/camera/image_raw" to="/main_camera/image_raw"/>

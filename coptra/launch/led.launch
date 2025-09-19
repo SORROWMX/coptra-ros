@@ -5,12 +5,10 @@
     <arg name="led_count" default="72"/>
     <arg name="gpio_pin" default="21"/>
 
-    <arg name="simulator" default="false"/>
-
     <!-- LED control configuration -->
 
     <!-- ws281x led strip driver -->
-    <node pkg="ws281x" name="led" type="ws281x_node" clear_params="true" output="screen" if="$(eval ws281x and not simulator)">
+    <node pkg="ws281x" name="led" type="ws281x_node" clear_params="true" output="screen" if="$(arg ws281x)">
         <param name="led_count" value="$(arg led_count)"/>
         <param name="gpio_pin" value="$(arg gpio_pin)"/>
         <param name="brightness" value="64"/>
