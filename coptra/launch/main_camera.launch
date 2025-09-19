@@ -36,8 +36,11 @@
     <node pkg="topic_tools" name="main_camera_throttle" type="throttle" ns="main_camera"
         args="messages image_raw $(arg throttled_topic_rate) image_raw_throttled" if="$(arg throttled_topic)"/>
 
+    <!-- nodelet manager for image processing -->
+    <node pkg="nodelet" type="nodelet" name="main_camera_nodelet_manager" args="manager" if="$(arg rectify)"/>
+
     <!-- rectified image topic -->
-    <node pkg="image_proc" type="image_proc" name="main_camera_image_proc" if="$(arg rectify)">
+    <node pkg="nodelet" type="nodelet" name="main_camera_image_proc" args="load image_proc/rectify main_camera_nodelet_manager" if="$(arg rectify)">
         <remap from="image_raw" to="main_camera/image_raw"/>
         <remap from="camera_info" to="main_camera/camera_info"/>
         <remap from="image_rect" to="main_camera/image_rect"/>
