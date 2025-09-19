@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Coptra 3D Visualization</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="style.css">
+	<link rel="icon" href="data:,">
+	<script type="text/javascript" src="js/three.min.js"></script>
+	<script type="text/javascript" src="js/eventemitter2.js"></script>
+	<script type="text/javascript" src="js/roslib.js"></script>
+	<script type="text/javascript" src="js/ros3d.js"></script>
+</head>
+<body>
+	<div class="container">
+		<h1>🎯 3D Visualization</h1>
+		<div class="subtitle">Real-time drone position and sensor data</div>
+		
+		<div class="card">
+			<div id="viz"></div>
+		</div>
+		
+		<div class="card">
+			<h3>Visualization Controls</h3>
+			<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+				<div class="btn btn-secondary" onclick="addVehicle()">🚁 Show Drone</div>
+				<div class="btn btn-secondary" onclick="addCamera()">📹 Show Camera</div>
+				<div class="btn btn-secondary" onclick="addAruco()">🎯 Show Markers</div>
+				<div class="btn btn-secondary" onclick="addAxes()">📐 Show Axes</div>
+			</div>
+		</div>
+	</div>
+	
+	<script type="text/javascript" src="js/viz.js"></script>
+	<script>
+		// Initialize the 3D scene
+		setScene('map');
+		addVehicle();
+		addCamera();
+		addAruco();
+		addAxes();
+	</script>
+</body>
+</html>

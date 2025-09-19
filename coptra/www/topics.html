@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Coptra ROS Topics</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="style.css">
+	<link rel="icon" href="data:,">
+	<script src="js/roslib.js"></script>
+	<script type="module" src="js/topics.js"></script>
+	<script src="js/yaml.js"></script>
+</head>
+<body>
+	<div class="container">
+		<h1>📡 ROS Topics</h1>
+		<div class="subtitle">Real-time monitoring of system data streams</div>
+		
+		<div class="card">
+			<div class="counter" id="connection-status">
+				<span class="status-indicator status-disconnected"></span>
+				Connecting to ROS...
+			</div>
+			<ul id="topics">
+				<li>Loading topics...</li>
+			</ul>
+		</div>
+		
+		<div id="topic-view" class="card">
+			<h3 id="topic-title">Topic Details</h3>
+			<div id="topic-info">
+				<span id="topic-type">message_type</span>
+				<div class="counter" id="message-counter">No messages received</div>
+			</div>
+			<code id="topic-message">Select a topic to view its messages</code>
+		</div>
+	</div>
+</body>
+</html>

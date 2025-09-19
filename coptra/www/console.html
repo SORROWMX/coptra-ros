@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Coptra System Console</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="style.css">
+	<link rel="icon" href="data:,">
+</head>
+<body>
+	<div class="container">
+		<h1>📝 System Console</h1>
+		<div class="subtitle">Real-time system logs and diagnostics</div>
+		
+		<div class="console-header">
+			<h2 class="console-title">/var/log/coptra.log</h2>
+			<a class="download-link" href="coptra.log" download>📥 Download Log</a>
+		</div>
+		
+		<div class="card">
+			<pre id="log-content">Loading logs...</pre>
+		</div>
+	</div>
+
+	<script type="module">
+		var pre = document.querySelector('#log-content');
+
+		function loadLogs() {
+			fetch('coptra.log?' + Math.random()).then(function(response) { // random to forbid caching
+				if (response.status == 404) {
+					pre.innerHTML = '⚠️ Log file /var/log/coptra.log does not exist\n\nThis might be normal if the system just started or logs are stored elsewhere.';
+					pre.className = 'error-message';
+					return;
+				} else if (response.status !== 200) {
+					pre.innerHTML = '❌ Error loading logs (Status: ' + response.status + ')';
+					pre.className = 'error-message';
+					return;
+				}
+				response.text().then(function(content) {
+					if (content.trim() === '') {
+						pre.innerHTML = '📋 Log file is empty\n\nNo log entries found.';
+					} else {
+						pre.innerHTML = content;
+					}
+					pre.className = '';
+					
+					// Auto-scroll to bottom
+					pre.scrollTop = pre.scrollHeight;
+				});
+			}).catch(function(error) {
+				pre.innerHTML = '🔌 Connection error: Unable to load logs\n\nPlease check your network connection.';
+				pre.className = 'error-message';
+			});
+		}
+
+		// Load logs initially
+		loadLogs();
+		
+		// Auto-refresh every 5 seconds
+		setInterval(loadLogs, 5000);
+	</script>
+</body>
+</html>

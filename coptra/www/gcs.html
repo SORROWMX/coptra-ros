@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Coptra Ground Control</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="style.css">
+	<link rel="icon" href="data:,">
+	<script src="js/roslib.js"></script>
+	<style>
+		body {
+			background: linear-gradient(135deg, var(--color-gradient-start) 0%, var(--color-gradient-end) 100%);
+			color: white;
+			min-height: 100vh;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		.gcs-dashboard {
+			text-align: center;
+			padding: 50px;
+			background: rgba(255, 255, 255, 0.1);
+			border-radius: 24px;
+			backdrop-filter: blur(15px);
+			border: 1px solid rgba(255, 255, 255, 0.2);
+			box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+			min-width: 450px;
+			position: relative;
+			overflow: hidden;
+		}
+		.gcs-dashboard::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			height: 4px;
+			background: linear-gradient(90deg, var(--color-accent-green), var(--color-accent-yellow));
+		}
+		.gcs-title {
+			font-size: 2.8rem;
+			margin-bottom: 30px;
+			font-weight: 700;
+			position: relative;
+		}
+		.gcs-title::after {
+			content: '';
+			position: absolute;
+			bottom: -10px;
+			left: 50%;
+			transform: translateX(-50%);
+			width: 60px;
+			height: 3px;
+			background: var(--color-accent-yellow);
+			border-radius: 2px;
+		}
+		.status-grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 30px;
+			margin-top: 40px;
+		}
+		.status-item {
+			padding: 25px;
+			background: rgba(255, 255, 255, 0.1);
+			border-radius: 16px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			transition: all 0.3s ease;
+			position: relative;
+			overflow: hidden;
+		}
+		.status-item::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			height: 3px;
+			background: linear-gradient(90deg, var(--color-accent-green), var(--color-accent-yellow));
+			transform: scaleX(0);
+			transition: transform 0.3s ease;
+		}
+		.status-item:hover::before {
+			transform: scaleX(1);
+		}
+		.status-item:hover {
+			transform: translateY(-4px);
+			background: rgba(255, 255, 255, 0.15);
+		}
+		.status-label {
+			font-size: 0.9rem;
+			opacity: 0.8;
+			margin-bottom: 12px;
+			font-weight: 500;
+		}
+		.status-value {
+			font-size: 2.2rem;
+			font-weight: 700;
+			color: var(--color-accent-yellow);
+		}
+		.connection-status {
+			font-size: 1.2rem;
+			margin-bottom: 25px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 10px;
+		}
+	</style>
+</head>
+<body>
+	<div class="gcs-dashboard">
+		<h1 class="gcs-title">🚁 Coptra GCS</h1>
+		<div class="connection-status" id="connection-status">
+			<span class="status-indicator status-disconnected"></span>
+			Disconnected
+		</div>
+		
+		<div class="status-grid">
+			<div class="status-item">
+				<div class="status-label">Flight Mode</div>
+				<div class="status-value" id="flight-mode">---</div>
+			</div>
+			<div class="status-item">
+				<div class="status-label">Battery</div>
+				<div class="status-value" id="battery-status">---</div>
+			</div>
+		</div>
+	</div>
+	
+	<script src="js/gcs.js"></script>
+</body>
+</html>

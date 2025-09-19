@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<library path="lib/libcoptra">
+   <class name="coptra/optical_flow" type="OpticalFlow" base_class_type="nodelet::Nodelet">
+      <description/>
+   </class>
+</library>
