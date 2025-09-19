@@ -7,12 +7,12 @@
 #include <array>
 #include <std_msgs/String.h>
 
-#include <clover/Execute.h>
+#include <coptra/Execute.h>
 
 ros::Duration timeout;
 
 // TODO: handle timeout
-bool handle(clover::Execute::Request& req, clover::Execute::Response& res)
+bool handle(coptra::Execute::Request& req, coptra::Execute::Response& res)
 {
 	ROS_INFO("Execute: %s", req.cmd.c_str());
 
@@ -22,7 +22,7 @@ bool handle(clover::Execute::Request& req, clover::Execute::Response& res)
 	FILE *fp = popen(req.cmd.c_str(), "r");
 
 	if (fp == NULL) {
-		res.code = clover::Execute::Request::CODE_FAIL;
+		res.code = coptra::Execute::Request::CODE_FAIL;
 		res.output = "popen() failed";
 		return true;
 	}

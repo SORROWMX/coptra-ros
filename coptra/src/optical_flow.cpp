@@ -31,8 +31,8 @@
 #include <geometry_msgs/Vector3Stamped.h>
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/TwistStamped.h>
-#include <clover/FlowConfig.h>
-#include <clover/OpticalFlowArduPilot.h>
+#include <coptra/FlowConfig.h>
+#include <coptra/OpticalFlowArduPilot.h>
 
 using cv::Mat;
 
@@ -65,7 +65,7 @@ private:
 	bool disable_on_vpe_;
 	ros::Subscriber vpe_sub_;
 	ros::Time last_vpe_time_;
-	std::shared_ptr<dynamic_reconfigure::Server<clover::FlowConfig>> dyn_srv_;
+	std::shared_ptr<dynamic_reconfigure::Server<coptra::FlowConfig>> dyn_srv_;
 	// OpenMV-like scaling and sensor id
 	double scale_x_;
 	double scale_y_;
@@ -111,7 +111,7 @@ private:
 		flow_pub_ = nh.advertise<mavros_msgs::OpticalFlowRad>("mavros/px4flow/raw/send", 1);
 		velo_pub_ = nh_priv.advertise<geometry_msgs::TwistStamped>("angular_velocity", 1);
 		shift_pub_ = nh_priv.advertise<geometry_msgs::Vector3Stamped>("shift", 1);
-		optical_flow_ardupilot_pub_ = nh_priv.advertise<clover::OpticalFlowArduPilot>("optical_flow_ardupilot", 1);
+		optical_flow_ardupilot_pub_ = nh_priv.advertise<coptra::OpticalFlowArduPilot>("optical_flow_ardupilot", 1);
 
 		flow_.time_delta_distance_us = 0;
 		flow_.distance = -1; // no distance sensor available
@@ -124,8 +124,8 @@ private:
 			vpe_sub_ = nh.subscribe("mavros/vision_pose/pose", 1, &OpticalFlow::vpeCallback, this);
 		}
 
-		dyn_srv_ = std::make_shared<dynamic_reconfigure::Server<clover::FlowConfig>>(nh_priv);
-		dynamic_reconfigure::Server<clover::FlowConfig>::CallbackType cb;
+		dyn_srv_ = std::make_shared<dynamic_reconfigure::Server<coptra::FlowConfig>>(nh_priv);
+		dynamic_reconfigure::Server<coptra::FlowConfig>::CallbackType cb;
 
 		cb = std::bind(&OpticalFlow::paramCallback, this, std::placeholders::_1, std::placeholders::_2);
 		dyn_srv_->setCallback(cb);
@@ -236,7 +236,7 @@ private:
 			uint8_t quality = static_cast<uint8_t>(std::min(255.0, std::max(0.0, response * 255.0)));
 
 			// Publish fields exactly as OpenMV expects via ArduPilot-compatible message
-			clover::OpticalFlowArduPilot optical_flow_ap_msg;
+			coptra::OpticalFlowArduPilot optical_flow_ap_msg;
 			optical_flow_ap_msg.header.stamp = msg->header.stamp;
 			optical_flow_ap_msg.header.frame_id = msg->header.frame_id;
 			// OpenMV does not send rates, set to zero
@@ -292,7 +292,7 @@ private:
 		return flow;
 	}
 
-	void paramCallback(clover::FlowConfig &config, uint32_t level)
+	void paramCallback(coptra::FlowConfig &config, uint32_t level)
 	{
 		enabled_ = config.enabled;
 		if (!enabled_) {

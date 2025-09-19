@@ -42,23 +42,23 @@
 #include <mavros_msgs/ManualControl.h>
 #include <mavros_msgs/Altitude.h>
 
-#include <clover/GetTelemetry.h>
-#include <clover/Navigate.h>
-#include <clover/NavigateGlobal.h>
-#include <clover/SetAltitude.h>
-#include <clover/SetYaw.h>
-#include <clover/SetYawRate.h>
-#include <clover/SetPosition.h>
-#include <clover/SetVelocity.h>
-#include <clover/SetAttitude.h>
-#include <clover/SetRates.h>
-#include <clover/State.h>
+#include <coptra/GetTelemetry.h>
+#include <coptra/Navigate.h>
+#include <coptra/NavigateGlobal.h>
+#include <coptra/SetAltitude.h>
+#include <coptra/SetYaw.h>
+#include <coptra/SetYawRate.h>
+#include <coptra/SetPosition.h>
+#include <coptra/SetVelocity.h>
+#include <coptra/SetAttitude.h>
+#include <coptra/SetRates.h>
+#include <coptra/State.h>
 
 using std::string;
 using std::isnan;
 using namespace geometry_msgs;
 using namespace sensor_msgs;
-using namespace clover;
+using namespace coptra;
 using mavros_msgs::PositionTarget;
 using mavros_msgs::AttitudeTarget;
 using mavros_msgs::Thrust;
@@ -688,7 +688,7 @@ inline void checkState()
 
 void publishState()
 {
-	clover::State msg;
+	coptra::State msg;
 	msg.mode = setpoint_type;
 	msg.yaw_mode = setpoint_yaw_type;
 
@@ -1220,7 +1220,7 @@ int main(int argc, char **argv)
 	thrust_pub = nh.advertise<Thrust>(mavros + "/setpoint_attitude/thrust", 1);
 
 	// State publisher
-	state_pub = nh_priv.advertise<clover::State>("state", 1, true);
+	state_pub = nh_priv.advertise<coptra::State>("state", 1, true);
 
 	 // Service servers
 	auto gt_serv = nh.advertiseService("get_telemetry", &getTelemetry);

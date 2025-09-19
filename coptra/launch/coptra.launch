@@ -14,7 +14,6 @@
     <arg name="rc" default="false"/>
     <arg name="force_init" default="true"/> <!-- force estimator to init by publishing zero pose -->
 
-    <arg name="simulator" default="false"/> <!-- flag that we are operating on a simulated drone -->
 
     <!-- log formatting -->
     <env name="ROSCONSOLE_FORMAT" value="[${severity}] [${time}]: ${logger}: ${message}"/>

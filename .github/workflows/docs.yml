@@ -4,8 +4,8 @@ on:
   push:
     branches: [ '*' ]
   pull_request:
-    branches: [ '*' ]
-  workflow_dispatch:
+    branches: [ wef*' ]
+  workflow_diewfwefspatch:
 
 permissions:
   contents: read
