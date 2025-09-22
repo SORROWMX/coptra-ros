@@ -14,6 +14,19 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Check if we're in the right directory
+if [ ! -d "builder" ] || [ ! -f "builder/image-build.sh" ]; then
+    echo "Error: builder directory not found!"
+    echo "Make sure you're running this script from the repository root directory"
+    echo "Current directory: $(pwd)"
+    echo "Expected files:"
+    echo "  - builder/image-build.sh"
+    echo "  - builder/image-chroot.sh"
+    echo "  - builder/image-software.sh"
+    echo "  - etc."
+    exit 1
+fi
+
 # Check required commands availability
 echo "Checking dependencies..."
 for cmd in qemu-aarch64-static kpartx parted unzip wget curl git; do
@@ -57,6 +70,17 @@ losetup -D 2>/dev/null || true
 # Make scripts executable
 echo "Setting up scripts..."
 chmod +x builder/*.sh
+
+# Verify scripts are executable
+echo "Verifying builder scripts..."
+for script in builder/image-build.sh builder/image-chroot.sh builder/image-software.sh builder/image-network.sh builder/image-ros.sh builder/image-validate.sh builder/image-resize.sh; do
+    if [ -f "$script" ]; then
+        echo "  ✓ $script"
+    else
+        echo "  ✗ $script (missing)"
+        exit 1
+    fi
+done
 
 # Start build process
 echo "Starting image build..."

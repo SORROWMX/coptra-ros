@@ -46,6 +46,10 @@ update-binfmts --status
 git clone https://github.com/your-username/coptra.git
 cd coptra
 
+# Make sure you're in the repository root directory
+pwd  # Should show: /path/to/coptra
+ls   # Should show: builder/ coptra/ coptra_blocks/ etc.
+
 # Run automated build script
 sudo ./build-on-vm.sh
 ```
@@ -70,6 +74,16 @@ sudo ./builder/image-build.sh
 ```
 
 ## Troubleshooting
+
+### Problem: "builder directory not found"
+```bash
+# Solution: make sure you're in the repository root
+pwd  # Should show: /path/to/coptra
+ls   # Should show: builder/ coptra/ coptra_blocks/
+
+# If you're in wrong directory, navigate to correct one
+cd /path/to/coptra
+```
 
 ### Problem: "Permission denied" when mounting
 ```bash
