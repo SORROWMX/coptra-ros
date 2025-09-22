@@ -46,9 +46,9 @@ echo_stamp() {
   esac
   echo -e ${TEXT}
 }
-BUILDER_DIR="/builder"
-REPO_DIR="${BUILDER_DIR}/repo"
-SCRIPTS_DIR="${REPO_DIR}/builder"
+BUILDER_DIR="/builder/repo/builder"
+REPO_DIR="/builder/repo"
+SCRIPTS_DIR="${BUILDER_DIR}"
 IMAGES_DIR="${REPO_DIR}/images"
 
 [[ ! -d ${SCRIPTS_DIR} ]] && (echo_stamp "Directory ${SCRIPTS_DIR} doesn't exist" "ERROR"; exit 1)
