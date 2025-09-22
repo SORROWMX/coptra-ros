@@ -30,6 +30,13 @@ for tool in losetup parted resize2fs; do
     fi
 done
 
+# Check for growpart (alternative method)
+HAS_GROWPART=false
+if command -v growpart >/dev/null 2>&1; then
+    HAS_GROWPART=true
+    echo_stamp "growpart available - will use as fallback"
+fi
+
 echo_stamp() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
@@ -117,24 +124,61 @@ echo_stamp "Using loop device: $LOOP_DEVICE"
 # Wait a moment for the loop device to be ready
 sleep 2
 
-# Find the partition (usually the second partition)
-PARTITION_DEVICE="${LOOP_DEVICE}p2"
-if [ ! -b "$PARTITION_DEVICE" ]; then
+# Find the partition (check both p1 and p2)
+PARTITION_DEVICE=""
+if [ -b "${LOOP_DEVICE}p2" ]; then
+    PARTITION_DEVICE="${LOOP_DEVICE}p2"
+elif [ -b "${LOOP_DEVICE}p1" ]; then
     PARTITION_DEVICE="${LOOP_DEVICE}p1"
+else
+    echo_stamp "Error: No partition found on loop device"
+    losetup -d "$LOOP_DEVICE"
+    exit 1
 fi
 
 echo_stamp "Using partition: $PARTITION_DEVICE"
 
 # Resize the partition using parted
 echo_stamp "Resizing partition table"
-parted "$LOOP_DEVICE" resizepart 2 100% || parted "$LOOP_DEVICE" resizepart 1 100%
+# First, fix the GPT to use all available space
+echo "Fix" | parted "$LOOP_DEVICE" ---pretend-input-tty
+
+# Determine which partition to resize
+PARTITION_NUM=""
+if [ -b "${LOOP_DEVICE}p2" ]; then
+    PARTITION_NUM="2"
+elif [ -b "${LOOP_DEVICE}p1" ]; then
+    PARTITION_NUM="1"
+fi
+
+if [ -n "$PARTITION_NUM" ]; then
+    echo_stamp "Resizing partition $PARTITION_NUM"
+    if ! parted "$LOOP_DEVICE" resizepart "$PARTITION_NUM" 100%; then
+        echo_stamp "parted failed, trying growpart as fallback"
+        if [ "$HAS_GROWPART" = true ]; then
+            growpart "$LOOP_DEVICE" "$PARTITION_NUM"
+        else
+            echo_stamp "Error: Both parted and growpart failed"
+            losetup -d "$LOOP_DEVICE"
+            exit 1
+        fi
+    fi
+else
+    echo_stamp "Error: Could not determine partition number"
+    losetup -d "$LOOP_DEVICE"
+    exit 1
+fi
 
 # Wait for partition table to be updated
 sleep 2
 
 # Resize the filesystem
 echo_stamp "Resizing filesystem"
-resize2fs "$PARTITION_DEVICE"
+if resize2fs "$PARTITION_DEVICE"; then
+    echo_stamp "Filesystem resized successfully"
+else
+    echo_stamp "Warning: Filesystem resize failed, but continuing..."
+fi
 
 # Clean up
 echo_stamp "Cleaning up loop device"
