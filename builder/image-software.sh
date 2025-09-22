@@ -182,33 +182,61 @@ apt-get autoremove -y
 echo_stamp "Cleaning up broken packages"
 apt-get --fix-broken install -y || true
 
-# Install specific versions to avoid conflicts
-echo_stamp "Installing specific ROS package versions"
-# Install python3-rosdistro from sorrowmx repository (version 0.9.0-1)
-echo_stamp "Installing python3-rosdistro=0.9.0-1 from sorrowmx repository"
-apt-get install --no-install-recommends -y python3-rosdistro=0.9.0-1 || {
+# Install only python3-rosdistro-modules (the correct package for Debian/Ubuntu)
+echo_stamp "Installing python3-rosdistro-modules (correct package for Debian/Ubuntu)"
+# First try to install from sorrowmx repository
+apt-get install --no-install-recommends -y python3-rosdistro-modules=0.9.0-1 || {
     echo_stamp "Failed to install specific version, trying force overwrite"
-    dpkg -i --force-overwrite /var/cache/apt/archives/python3-rosdistro_0.9.0-1_all.deb || true
+    dpkg -i --force-overwrite /var/cache/apt/archives/python3-rosdistro-modules_0.9.0-1_all.deb || true
     apt-get --fix-broken install -y || true
 }
 
 # Hold the package to prevent version changes
-echo_stamp "Holding python3-rosdistro to prevent version conflicts"
-apt-mark hold python3-rosdistro
+echo_stamp "Holding python3-rosdistro-modules to prevent version conflicts"
+apt-mark hold python3-rosdistro-modules
 
-# Create apt preferences to pin specific versions
+# Create apt preferences to pin specific versions and exclude conflicting packages
 echo_stamp "Creating apt preferences to pin ROS package versions"
 cat > /etc/apt/preferences.d/ros-package-pinning << 'EOF'
-Package: python3-rosdistro
-Pin: version 0.9.0-1
-Pin-Priority: 1001
-
 Package: python3-rosdistro-modules
 Pin: version 0.9.0-1
 Pin-Priority: 1001
+
+# Exclude python3-rosdistro to prevent conflicts
+Package: python3-rosdistro
+Pin: release *
+Pin-Priority: -1
 EOF
 
-# Now install rosdep-modules which should work with the held version
+# Create a fake python3-rosdistro package to satisfy dependencies
+echo_stamp "Creating fake python3-rosdistro package to satisfy dependencies"
+
+# Install equivs if not already installed
+apt-get install -y equivs || true
+
+# Create a virtual package that provides python3-rosdistro
+cat > /tmp/python3-rosdistro-virtual << 'EOF'
+Package: python3-rosdistro-virtual
+Version: 0.9.0-1
+Architecture: all
+Maintainer: Auto-generated
+Description: Virtual python3-rosdistro package
+ This is a virtual package that provides python3-rosdistro functionality
+ through python3-rosdistro-modules to avoid file conflicts.
+Provides: python3-rosdistro
+Conflicts: python3-rosdistro
+EOF
+
+# Build and install the virtual package
+cd /tmp
+equivs-build python3-rosdistro-virtual > /dev/null 2>&1 || true
+if [ -f python3-rosdistro-virtual_0.9.0-1_all.deb ]; then
+    dpkg -i python3-rosdistro-virtual_0.9.0-1_all.deb || true
+    rm -f python3-rosdistro-virtual_0.9.0-1_all.deb
+fi
+rm -f python3-rosdistro-virtual
+
+# Now install rosdep-modules which should work with the fake package
 echo_stamp "Installing python3-rosdep-modules"
 my_travis_retry apt-get install --no-install-recommends -y python3-rosdep-modules
 
@@ -275,7 +303,21 @@ fi
 
 # Check specific package versions
 echo_stamp "Checking ROS package versions:"
-dpkg -l | grep -E "(python3-rosdistro|python3-rosdep-modules)" || echo_stamp "No ROS distro packages found"
+dpkg -l | grep -E "(python3-rosdistro-modules|python3-rosdep-modules)" || echo_stamp "No ROS distro packages found"
+
+# Verify that python3-rosdistro is NOT installed (should be excluded)
+if dpkg -l | grep -q "^ii.*python3-rosdistro[^-]"; then
+    echo_stamp "WARNING: python3-rosdistro is installed, this may cause conflicts" ERROR
+else
+    echo_stamp "Good: python3-rosdistro is not installed, using python3-rosdistro-modules instead" SUCCESS
+fi
+
+# Check if virtual package is providing python3-rosdistro
+if dpkg -l | grep -q "^ii.*python3-rosdistro-virtual"; then
+    echo_stamp "Virtual python3-rosdistro package is installed" SUCCESS
+else
+    echo_stamp "WARNING: Virtual python3-rosdistro package is not installed" ERROR
+fi
 
 # Check for any remaining broken packages
 echo_stamp "Checking for remaining broken packages"
