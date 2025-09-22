@@ -109,9 +109,18 @@ case "$COMMAND" in
             chmod +x "$TEMP_DIR$CHROOT_SCRIPT_PATH"
         fi
         
-        # Execute script in chroot (binfmt_misc should handle ARM64 emulation automatically)
+        # Execute script in chroot using QEMU directly
         echo_stamp "Executing script in chroot: $CHROOT_SCRIPT_PATH"
-        chroot "$TEMP_DIR" /bin/sh "$CHROOT_SCRIPT_PATH" "$@"
+        
+        # Try to use QEMU directly if available
+        if [ -f "/usr/bin/qemu-aarch64-static" ]; then
+            echo_stamp "Using QEMU aarch64 static for execution"
+            /usr/bin/qemu-aarch64-static "$TEMP_DIR$CHROOT_SCRIPT_PATH" "$@"
+        else
+            # Fallback to chroot (may not work in Docker)
+            echo_stamp "Using chroot for execution (fallback)"
+            chroot "$TEMP_DIR" /bin/sh "$CHROOT_SCRIPT_PATH" "$@"
+        fi
         echo_stamp "Script execution complete"
         ;;
     *)
