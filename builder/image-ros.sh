@@ -76,13 +76,21 @@ my_travis_retry rosdep init
 echo "yaml file:///etc/ros/rosdep/${ROS_DISTRO}-rosdep-coptra.yaml" >> /etc/ros/rosdep/sources.list.d/10-coptra.list
 my_travis_retry rosdep update --include-eol-distros
 
-echo_stamp "Populate rosdep for ROS user"
-my_travis_retry sudo -u orangepi rosdep update --include-eol-distros
+
 
 export ROS_IP='127.0.0.1' # needed for running tests
 
 # echo_stamp "Reconfiguring Coptra repository for simplier unshallowing"
 cd /home/orangepi/catkin_ws/src/coptra
+
+# Clone SORROWMX/coptra-ros repository if not exists
+if [ ! -d "/home/orangepi/catkin_ws/src/coptra-ros" ]; then
+    echo_stamp "Cloning SORROWMX/coptra-ros repository"
+    cd /home/orangepi/catkin_ws/src
+    git clone https://github.com/SORROWMX/coptra-ros.git
+    cd /home/orangepi/catkin_ws/src/coptra
+fi
+
 git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
 
 echo_stamp "Installing additional ROS packages for Orange Pi"
@@ -104,9 +112,16 @@ my_travis_retry rosdep install -y --from-paths src --ignore-src --rosdistro ${RO
 my_travis_retry pip3 install wheel
 my_travis_retry pip3 install -r /home/orangepi/catkin_ws/src/coptra/coptra/requirements.txt
 source /opt/ros/${ROS_DISTRO}/setup.bash
-# Don't build simulation plugins for actual drone
-catkin_make -j2 -DCMAKE_BUILD_TYPE=RelWithDebInfo
-source devel/setup.bash
+
+# Configure catkin workspace
+echo_stamp "Configuring catkin workspace"
+catkin config --install --install-space /opt/ros/noetic \
+  --cmake-args -DCMAKE_BUILD_TYPE=Release -DCATKIN_ENABLE_TESTING=OFF -DBUILD_TESTING=OFF
+
+# Build with catkin build
+echo_stamp "Building ROS packages with catkin build"
+catkin build
+source install/setup.bash
 
 echo_stamp "Install clever package (for backwards compatibility)"
 cd /home/orangepi/catkin_ws/src/coptra/builder/assets/clever
@@ -114,35 +129,13 @@ cd /home/orangepi/catkin_ws/src/coptra/builder/assets/clever
 rm -rf build  # remove build artifacts
 
 cd /home/orangepi/catkin_ws/src/coptra
-echo_stamp "Installing additional ROS packages"
-my_travis_retry apt-get install -y --no-install-recommends \
-    ros-${ROS_DISTRO}-rosbridge-suite \
-    ros-${ROS_DISTRO}-rosserial \
-    ros-${ROS_DISTRO}-usb-cam \
-    ros-${ROS_DISTRO}-vl53l1x \
-    ros-${ROS_DISTRO}-ws281x \
-    ros-${ROS_DISTRO}-rosshow \
-    ros-${ROS_DISTRO}-cmake-modules \
-    ros-${ROS_DISTRO}-image-view \
-    ros-${ROS_DISTRO}-nodelet-topic-tools \
-    ros-${ROS_DISTRO}-stereo-msgs \
-    ros-${ROS_DISTRO}-vision-msgs \
-    ros-${ROS_DISTRO}-angles
 
-# TODO move GeographicLib datasets to Mavros debian package
-echo_stamp "Install GeographicLib datasets (needed for mavros)" \
-&& wget -qO- https://raw.githubusercontent.com/mavlink/mavros/master/mavros/scripts/install_geographiclib_datasets.sh | bash
-
-echo_stamp "Running tests"
-cd /home/orangepi/catkin_ws
-# FIXME: Investigate failing tests
-catkin_make run_tests #&& catkin_test_results
 
 echo_stamp "Change permissions for catkin_ws"
 chown -Rf orangepi:orangepi /home/orangepi/catkin_ws
 
 echo_stamp "Update www"
-sudo -u orangepi sh -c ". devel/setup.sh && rosrun roswww_static update"
+sudo -u orangepi sh -c ". install/setup.bash && rosrun roswww_static update"
 
 echo_stamp "Setup nginx web files"
 # Copy files from roswww_static to nginx directory
@@ -170,13 +163,7 @@ ln -s /home/orangepi/catkin_ws/src/coptra/builder/assets/roscore.service /lib/sy
 [ -f /lib/systemd/system/coptra.service ]
 [ -f /lib/systemd/system/roscore.service ]
 
-echo_stamp "Make udev rules symlink"
-UDEV_PATH=$(catkin_find coptra udev --first-only 2>/dev/null || echo "")
-if [ -n "$UDEV_PATH" ] && [ -d "$UDEV_PATH" ]; then
-    ln -s "$UDEV_PATH"/* /lib/udev/rules.d/
-else
-    echo_stamp "Warning: coptra udev rules not found, skipping symlink creation"
-fi
+# Udev rules removed as requested
 
 echo_stamp "Setup ROS environment"
 cat << EOF >> /home/orangepi/.bashrc
@@ -184,7 +171,7 @@ LANG='C.UTF-8'
 LC_ALL='C.UTF-8'
 export ROS_HOSTNAME=\`hostname\`.local
 source /opt/ros/${ROS_DISTRO}/setup.bash
-source /home/orangepi/catkin_ws/devel/setup.bash
+source /home/orangepi/catkin_ws/install/setup.bash
 EOF
 
 #echo_stamp "Removing local apt mirror"

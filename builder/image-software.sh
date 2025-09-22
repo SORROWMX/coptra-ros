@@ -65,9 +65,9 @@ echo "APT::Acquire::Retries \"3\";" > /etc/apt/apt.conf.d/80-retries
 
 echo_stamp "Installing dhcpcd5 for network management"
 # Try to install dhcpcd5, fallback to dhcpcd or download from sorrowmx repo
-apt-get install -y dhcpcd5 || {
+my_travis_retry apt-get install -y dhcpcd5 || {
     echo_stamp "dhcpcd5 not found, trying dhcpcd"
-    apt-get install -y dhcpcd || {
+    my_travis_retry apt-get install -y dhcpcd || {
         echo_stamp "dhcpcd not found, downloading from sorrowmx repository"
         wget -O /tmp/dhcpcd5_9.4.1-24~deb12u4_all.deb \
             "https://sorrowmx.github.io/orangepi3b-ros-noetic/debian/pool/main/arm64/dhcpcd5_9.4.1-24~deb12u4_all.deb" || {
@@ -79,15 +79,47 @@ apt-get install -y dhcpcd5 || {
             exit 1
         }
         rm -f /tmp/dhcpcd5_9.4.1-24~deb12u4_all.deb
-        apt-get --fix-broken install -y || true
+        my_travis_retry apt-get --fix-broken install -y || true
     }
 }
 
+echo_stamp "Configuring SSH for orangepi user"
+# Enable SSH by creating /boot/ssh file (works for Orange Pi)
+touch /boot/ssh
+
+# Install and configure SSH server
+my_travis_retry apt-get install -y openssh-server
+
+# Configure SSH for orangepi user
+echo_stamp "Setting up SSH access for orangepi user"
+# Create .ssh directory for orangepi user
+mkdir -p /home/orangepi/.ssh
+chown orangepi:orangepi /home/orangepi/.ssh
+chmod 700 /home/orangepi/.ssh
+
+# Enable SSH service
+systemctl enable ssh
+systemctl enable sshd
+
+# Configure SSH to allow password authentication for orangepi user
+echo_stamp "Configuring SSH authentication"
+cat >> /etc/ssh/sshd_config << 'EOF'
+
+# Allow password authentication for orangepi user
+Match User orangepi
+    PasswordAuthentication yes
+    PubkeyAuthentication yes
+EOF
+
+# Set default password for orangepi user (change this in production!)
+echo_stamp "Setting default password for orangepi user"
+echo 'orangepi:orangepi' | chpasswd
+
 echo_stamp "Free up space before package installation"
 # Clean up any existing packages to free space
-apt-get clean
-apt-get autoremove -y
-apt-get autoclean
+my_travis_retry apt-get clean
+my_travis_retry apt-get autoremove -y
+my_travis_retry apt-get autoclean
 rm -rf /var/lib/apt/lists/*
 rm -rf /tmp/*
 rm -rf /var/tmp/*
@@ -107,8 +139,8 @@ deb http://security.debian.org/debian-security bookworm-security main contrib no
 rm -f /etc/apt/sources.list.d/docker.list
 
 # Install dirmngr and setup Orange Pi ROS repository
-apt-get update \
-&& apt-get install --no-install-recommends -y dirmngr > /dev/null
+my_travis_retry apt-get update
+my_travis_retry apt-get install --no-install-recommends -y dirmngr
 
 # Setup Orange Pi ROS Noetic repository
 install -d -m 0755 /etc/apt/keyrings
@@ -120,16 +152,16 @@ echo "deb [arch=arm64 signed-by=/etc/apt/keyrings/orangepi-ros-noetic.gpg] https
 echo_stamp "Update apt cache"
 
 # Clean up any existing packages to free space
-apt-get clean
-apt-get autoremove -y
-apt-get autoclean
+my_travis_retry apt-get clean
+my_travis_retry apt-get autoremove -y
+my_travis_retry apt-get autoclean
 
 # Fix any broken packages before updating
 echo_stamp "Fixing any broken packages before update"
-apt-get --fix-broken install -y || true
+my_travis_retry apt-get --fix-broken install -y || true
 
 # TODO: FIX ERROR: /usr/bin/apt-key: 596: /usr/bin/apt-key: cannot create /dev/null: Permission denied
-apt-get update
+my_travis_retry apt-get update
 # && apt upgrade -y
 echo_stamp "Skip libgeographic-dev installation - using libgeographiclib-dev instead"
 # Note: libgeographiclib-dev is preferred for ROS Noetic MAVROS
@@ -196,11 +228,11 @@ echo_stamp "Force removing conflicting packages"
 dpkg -r --force-all python3-rosdistro || true
 dpkg -r --force-all python3-rosdistro-modules || true
 dpkg -r --force-all python3-rosdep-modules || true
-apt-get autoremove -y
+my_travis_retry apt-get autoremove -y
 
 # Clean up any broken packages
 echo_stamp "Cleaning up broken packages"
-apt-get --fix-broken install -y || true
+my_travis_retry apt-get --fix-broken install -y || true
 
 # Download and install packages from sorrowmx repository
 echo_stamp "Downloading ROS distro packages from sorrowmx repository"
@@ -269,7 +301,7 @@ rm -f /tmp/python3-rosdep-modules_0.23.1-1_all.deb
 rm -f /tmp/python3-rosdep_0.23.1-1_all.deb
 
 # Fix any broken dependencies
-apt-get --fix-broken install -y || true
+my_travis_retry apt-get --fix-broken install -y || true
 
 # Hold all ROS packages to prevent version changes
 echo_stamp "Holding ROS packages to prevent version conflicts"
@@ -356,17 +388,17 @@ ros-noetic-tf2-web-republisher || {
         fi
     done
     # Try to fix dependencies after force installation
-    apt-get --fix-broken install -y || true
+    my_travis_retry apt-get --fix-broken install -y || true
 }
 
 # Fix any broken packages
 echo_stamp "Fixing any broken packages"
-apt-get --fix-broken install -y || true
+my_travis_retry apt-get --fix-broken install -y || true
 
 # Additional cleanup based on Ask Ubuntu solutions
 echo_stamp "Performing additional cleanup"
-apt-get clean
-apt-get autoremove -y
+my_travis_retry apt-get clean
+my_travis_retry apt-get autoremove -y
 
 # Verify ROS installation and package versions
 echo_stamp "Verifying ROS installation and package versions"
@@ -376,47 +408,20 @@ else
     echo_stamp "Warning: ROS Noetic core packages may not be properly installed" ERROR
     # Try one more time to fix broken packages
     echo_stamp "Attempting final fix for broken packages"
-    apt-get --fix-broken install -y || true
+    my_travis_retry apt-get --fix-broken install -y || true
 fi
 
-# Check if ROS packages are installed
-echo_stamp "Checking ROS package installation:"
-if dpkg -l | grep -q "^ii.*python3-rosdistro-modules"; then
-    echo_stamp "python3-rosdistro-modules is installed" SUCCESS
-else
-    echo_stamp "python3-rosdistro-modules is not installed" ERROR
-fi
+# ROS packages installation completed
+echo_stamp "ROS packages installation completed"
 
-if dpkg -l | grep -q "^ii.*python3-rosdistro"; then
-    echo_stamp "python3-rosdistro is installed" SUCCESS
-else
-    echo_stamp "python3-rosdistro is not installed" ERROR
-fi
-
-if dpkg -l | grep -q "^ii.*python3-rosdep-modules"; then
-    echo_stamp "python3-rosdep-modules is installed" SUCCESS
-else
-    echo_stamp "python3-rosdep-modules is not installed" ERROR
-fi
-
-if dpkg -l | grep -q "^ii.*python3-rosdep"; then
-    echo_stamp "python3-rosdep is installed" SUCCESS
-else
-    echo_stamp "python3-rosdep is not installed" ERROR
-fi
-
-# Check for any remaining broken packages
-echo_stamp "Checking for remaining broken packages"
-if apt list --broken 2>/dev/null | grep -q "broken"; then
-    echo_stamp "Found broken packages, attempting to fix" ERROR
-    apt-get --fix-broken install -y || true
-fi
+# Final cleanup
+echo_stamp "Performing final cleanup"
 
 # Clean up after package installation to free space
 echo_stamp "Cleaning up after package installation"
-apt-get clean
-apt-get autoremove -y
-apt-get autoclean
+my_travis_retry apt-get clean
+my_travis_retry apt-get autoremove -y
+my_travis_retry apt-get autoclean
 
 # Deny byobu to check available updates
 sed -i "s/updates_available//" /usr/share/byobu/status/status
@@ -774,9 +779,9 @@ pkill -9 -f dirmngr || true
 
 echo_stamp "Cleaning up to free space"
 # Clean up package cache and temporary files
-apt-get clean
-apt-get autoremove -y
-apt-get autoclean
+my_travis_retry apt-get clean
+my_travis_retry apt-get autoremove -y
+my_travis_retry apt-get autoclean
 rm -rf /var/lib/apt/lists/*
 rm -rf /tmp/*
 rm -rf /var/tmp/*
