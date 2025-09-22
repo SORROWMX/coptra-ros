@@ -182,24 +182,39 @@ apt-get autoremove -y
 echo_stamp "Cleaning up broken packages"
 apt-get --fix-broken install -y || true
 
-# Install python3-rosdistro-modules with force overwrite if needed
-echo_stamp "Installing python3-rosdistro-modules"
-my_travis_retry apt-get install --no-install-recommends -y python3-rosdistro-modules || {
-    echo_stamp "Standard install failed, trying force overwrite"
-    # If standard install fails, try force overwrite
-    dpkg -i --force-overwrite /var/cache/apt/archives/python3-rosdistro-modules*.deb || true
+# Install specific versions to avoid conflicts
+echo_stamp "Installing specific ROS package versions"
+# Install python3-rosdistro from sorrowmx repository (version 0.9.0-1)
+echo_stamp "Installing python3-rosdistro=0.9.0-1 from sorrowmx repository"
+apt-get install --no-install-recommends -y python3-rosdistro=0.9.0-1 || {
+    echo_stamp "Failed to install specific version, trying force overwrite"
+    dpkg -i --force-overwrite /var/cache/apt/archives/python3-rosdistro_0.9.0-1_all.deb || true
     apt-get --fix-broken install -y || true
 }
 
-# Install python3-rosdistro with force overwrite to satisfy dependencies
-echo_stamp "Installing python3-rosdistro with force overwrite"
-dpkg -i --force-overwrite /var/cache/apt/archives/python3-rosdistro*.deb || true
-apt-get --fix-broken install -y || true
+# Hold the package to prevent version changes
+echo_stamp "Holding python3-rosdistro to prevent version conflicts"
+apt-mark hold python3-rosdistro
+
+# Create apt preferences to pin specific versions
+echo_stamp "Creating apt preferences to pin ROS package versions"
+cat > /etc/apt/preferences.d/ros-package-pinning << 'EOF'
+Package: python3-rosdistro
+Pin: version 0.9.0-1
+Pin-Priority: 1001
+
+Package: python3-rosdistro-modules
+Pin: version 0.9.0-1
+Pin-Priority: 1001
+EOF
+
+# Now install rosdep-modules which should work with the held version
+echo_stamp "Installing python3-rosdep-modules"
+my_travis_retry apt-get install --no-install-recommends -y python3-rosdep-modules
 
 echo_stamp "Installing ROS packages"
-# Try standard installation first
+# Try standard installation first (excluding already installed packages)
 my_travis_retry apt-get install --no-install-recommends -y \
-python3-rosdep-modules \
 python3-rosinstall-generator \
 python3-wstool \
 python3-rosinstall \
@@ -226,7 +241,7 @@ ros-noetic-web-video-server \
 ros-noetic-tf2-web-republisher || {
     echo_stamp "Standard ROS installation failed, trying force overwrite method"
     # If standard installation fails, try force overwrite for problematic packages
-    for pkg in python3-rosdep-modules python3-rosdistro-modules python3-rosdistro; do
+    for pkg in python3-rosinstall python3-rosinstall-generator; do
         if dpkg -l | grep -q "^ii.*$pkg"; then
             echo_stamp "Package $pkg already installed"
         else
@@ -242,31 +257,13 @@ ros-noetic-tf2-web-republisher || {
 echo_stamp "Fixing any broken packages"
 apt-get --fix-broken install -y || true
 
-# If we still have dependency issues, try to install missing packages individually
-echo_stamp "Checking for remaining dependency issues"
-if apt list --broken 2>/dev/null | grep -q "broken\|python3-rosinstall\|python3-rosinstall-generator"; then
-    echo_stamp "Found dependency issues, attempting individual package installation"
-    
-    # Try to install problematic packages individually with force overwrite
-    for pkg in python3-rosinstall python3-rosinstall-generator; do
-        echo_stamp "Attempting to install $pkg individually"
-        apt-get install --no-install-recommends -y $pkg || {
-            echo_stamp "Standard install failed for $pkg, trying force overwrite"
-            dpkg -i --force-overwrite /var/cache/apt/archives/${pkg}*.deb || true
-        }
-    done
-    
-    # Final attempt to fix dependencies
-    apt-get --fix-broken install -y || true
-fi
-
 # Additional cleanup based on Ask Ubuntu solutions
 echo_stamp "Performing additional cleanup"
 apt-get clean
 apt-get autoremove -y
 
-# Verify ROS installation
-echo_stamp "Verifying ROS installation"
+# Verify ROS installation and package versions
+echo_stamp "Verifying ROS installation and package versions"
 if dpkg -l | grep -q "ros-noetic-ros-core"; then
     echo_stamp "ROS Noetic core packages installed successfully" SUCCESS
 else
@@ -275,6 +272,10 @@ else
     echo_stamp "Attempting final fix for broken packages"
     apt-get --fix-broken install -y || true
 fi
+
+# Check specific package versions
+echo_stamp "Checking ROS package versions:"
+dpkg -l | grep -E "(python3-rosdistro|python3-rosdep-modules)" || echo_stamp "No ROS distro packages found"
 
 # Check for any remaining broken packages
 echo_stamp "Checking for remaining broken packages"
