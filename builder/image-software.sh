@@ -127,7 +127,6 @@ python3-yaml \
 catkin-tools \
 libgeographiclib-dev \
 libgeographiclib23 \
-libgeographic-dev \
 ros-noetic-ros-core \
 ros-noetic-ros-base \
 ros-noetic-ros-comm \
@@ -167,6 +166,16 @@ avahi-daemon \
 avahi-utils \
 libnss-mdns \
 device-tree-compiler
+
+echo_stamp "Install libgeographic-dev from Ubuntu (required for ros-noetic-mavros)"
+# Install libgeographic-dev from Ubuntu since it's not available in Debian Bookworm
+cd /tmp
+wget http://archive.ubuntu.com/ubuntu/pool/universe/g/geographiclib/libgeographic17_1.49-2_arm64.deb
+wget http://archive.ubuntu.com/ubuntu/pool/universe/g/geographiclib/libgeographic-dev_1.49-2_arm64.deb
+dpkg -i libgeographic17_1.49-2_arm64.deb libgeographic-dev_1.49-2_arm64.deb
+apt-get install -f -y  # Fix any dependency issues
+cd /
+rm -f /tmp/libgeographic*.deb
 
 # Deny byobu to check available updates
 sed -i "s/updates_available//" /usr/share/byobu/status/status
