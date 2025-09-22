@@ -117,6 +117,9 @@ tmux \
 tree \
 vim \
 tcpdump \
+parted \
+e2fsprogs \
+util-linux \
 libpoco-dev \
 libzbar0 \
 python3-rosdep-modules \

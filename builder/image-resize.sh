@@ -22,6 +22,14 @@ if [ ! -f "$IMAGE_PATH" ]; then
     exit 1
 fi
 
+# Check for required tools
+for tool in losetup parted resize2fs; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+        echo "Error: Required tool '$tool' not found"
+        exit 1
+    fi
+done
+
 echo_stamp() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
@@ -98,3 +106,38 @@ NEW_SIZE=$(stat -c%s "$IMAGE_PATH")
 echo_stamp "New size: $((NEW_SIZE / 1024 / 1024)) MB"
 
 echo_stamp "Image resize complete"
+
+# Now we need to resize the filesystem inside the image
+echo_stamp "Resizing filesystem inside the image"
+
+# Find the loop device for the image
+LOOP_DEVICE=$(losetup -f --show "$IMAGE_PATH")
+echo_stamp "Using loop device: $LOOP_DEVICE"
+
+# Wait a moment for the loop device to be ready
+sleep 2
+
+# Find the partition (usually the second partition)
+PARTITION_DEVICE="${LOOP_DEVICE}p2"
+if [ ! -b "$PARTITION_DEVICE" ]; then
+    PARTITION_DEVICE="${LOOP_DEVICE}p1"
+fi
+
+echo_stamp "Using partition: $PARTITION_DEVICE"
+
+# Resize the partition using parted
+echo_stamp "Resizing partition table"
+parted "$LOOP_DEVICE" resizepart 2 100% || parted "$LOOP_DEVICE" resizepart 1 100%
+
+# Wait for partition table to be updated
+sleep 2
+
+# Resize the filesystem
+echo_stamp "Resizing filesystem"
+resize2fs "$PARTITION_DEVICE"
+
+# Clean up
+echo_stamp "Cleaning up loop device"
+losetup -d "$LOOP_DEVICE"
+
+echo_stamp "Filesystem resize complete"
