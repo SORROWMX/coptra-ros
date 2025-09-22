@@ -108,13 +108,13 @@ vim \
 tcpdump \
 libpoco-dev \
 libzbar0 \
-python3-rosdep \
+python3-rosdep-modules \
 python3-rosinstall-generator \
 python3-wstool \
 python3-rosinstall \
 build-essential \
 libffi-dev \
-pigpio python3-pigpio \
+python3-pigpio \
 i2c-tools \
 espeak espeak-data python3-espeak \
 ntpdate \
