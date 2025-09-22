@@ -72,6 +72,9 @@ jobs:
               # Copy QEMU binaries
               cp /usr/bin/qemu-arm-static /usr/bin/qemu-aarch64-static 2>/dev/null || true
               
+              # Register QEMU with binfmt_misc for automatic emulation
+              echo ':aarch64:M::\\x7fELF\\x02\\x01\\x01\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x02\\x00\\xb7\\x00:\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xfc\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xff\\xfe\\xff\\xff\\xff:/usr/bin/qemu-aarch64-static:F' > /proc/sys/fs/binfmt_misc/register 2>/dev/null || true
+              
               # Fix Git security issue
               git config --global --add safe.directory /builder/repo
               

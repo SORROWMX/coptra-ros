@@ -107,20 +107,9 @@ case "$COMMAND" in
             chmod +x "$TEMP_DIR$SCRIPT"
         fi
         
-        # Try direct execution first (for x86_64 hosts)
-        echo_stamp "Attempting direct execution: $SCRIPT"
-        if chroot "$TEMP_DIR" /bin/sh "$SCRIPT" "$@" 2>/dev/null; then
-            echo_stamp "Direct execution successful"
-        else
-            # Fallback to QEMU if direct execution fails
-            if [ -f "$TEMP_DIR/usr/bin/qemu-aarch64-static" ]; then
-                echo_stamp "Direct execution failed, trying QEMU: $SCRIPT"
-                chroot "$TEMP_DIR" /usr/bin/qemu-aarch64-static /bin/sh "$SCRIPT" "$@"
-            else
-                echo_stamp "Error: No QEMU available and direct execution failed" "ERROR"
-                exit 1
-            fi
-        fi
+        # Execute script in chroot (binfmt_misc should handle ARM64 emulation automatically)
+        echo_stamp "Executing script in chroot: $SCRIPT"
+        chroot "$TEMP_DIR" /bin/sh "$SCRIPT" "$@"
         echo_stamp "Script execution complete"
         ;;
     *)
