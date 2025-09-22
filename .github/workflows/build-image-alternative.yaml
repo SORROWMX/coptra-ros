@@ -54,6 +54,12 @@ jobs:
               # Fix Git security issue
               git config --global --add safe.directory /builder/repo
               
+              # Copy missing scripts to /builder directory
+              mkdir -p /builder
+              cp /builder/repo/builder/image-chroot.sh /builder/
+              cp /builder/repo/builder/image-resize.sh /builder/
+              chmod +x /builder/image-chroot.sh /builder/image-resize.sh
+              
               # Navigate to repo and run build script
               cd /builder/repo && chmod +x builder/image-build.sh && ./builder/image-build.sh
             "
