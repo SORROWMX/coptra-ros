@@ -145,13 +145,22 @@ sudo -u orangepi sh -c ". devel/setup.sh && rosrun roswww_static update"
 
 echo_stamp "Setup nginx web files"
 # Copy files from roswww_static to nginx directory
-cp -r /home/orangepi/.ros/www/* /var/www/ros/
-chown -R www-data:www-data /var/www/ros/
-chmod -R 755 /var/www/ros/
+if [ -d /home/orangepi/.ros/www ]; then
+    cp -r /home/orangepi/.ros/www/* /var/www/ros/
+    chown -R www-data:www-data /var/www/ros/
+    chmod -R 755 /var/www/ros/
+else
+    echo_stamp "Warning: /home/orangepi/.ros/www not found, skipping web files copy"
+fi
 
 echo_stamp "Make \$HOME/examples symlink"
-ln -s "$(catkin_find coptra examples --first-only)" /home/orangepi
-chown -Rf orangepi:orangepi /home/orangepi/examples
+EXAMPLES_PATH=$(catkin_find coptra examples --first-only 2>/dev/null || echo "")
+if [ -n "$EXAMPLES_PATH" ] && [ -d "$EXAMPLES_PATH" ]; then
+    ln -s "$EXAMPLES_PATH" /home/orangepi/examples
+    chown -Rf orangepi:orangepi /home/orangepi/examples
+else
+    echo_stamp "Warning: coptra examples not found, skipping symlink creation"
+fi
 
 echo_stamp "Make systemd services symlinks"
 ln -s /home/orangepi/catkin_ws/src/coptra/builder/assets/coptra.service /lib/systemd/system/
@@ -161,7 +170,12 @@ ln -s /home/orangepi/catkin_ws/src/coptra/builder/assets/roscore.service /lib/sy
 [ -f /lib/systemd/system/roscore.service ]
 
 echo_stamp "Make udev rules symlink"
-ln -s "$(catkin_find coptra udev --first-only)"/* /lib/udev/rules.d/
+UDEV_PATH=$(catkin_find coptra udev --first-only 2>/dev/null || echo "")
+if [ -n "$UDEV_PATH" ] && [ -d "$UDEV_PATH" ]; then
+    ln -s "$UDEV_PATH"/* /lib/udev/rules.d/
+else
+    echo_stamp "Warning: coptra udev rules not found, skipping symlink creation"
+fi
 
 echo_stamp "Setup ROS environment"
 cat << EOF >> /home/orangepi/.bashrc

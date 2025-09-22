@@ -36,7 +36,11 @@ apt-cache show gst-rtsp-launch
 apt-cache show openvpn
 
 echo "Move /etc/ld.so.preload back to its original position"
-mv /etc/ld.so.preload.disabled-for-build /etc/ld.so.preload
+if [ -f /etc/ld.so.preload.disabled-for-build ]; then
+    mv /etc/ld.so.preload.disabled-for-build /etc/ld.so.preload
+else
+    echo "Warning: /etc/ld.so.preload.disabled-for-build not found, skipping restore"
+fi
 
 echo "Largest packages installed"
 sudo -E sh -c 'apt-get install -y debian-goodies'

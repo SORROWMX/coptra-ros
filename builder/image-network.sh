@@ -43,9 +43,16 @@ EOF
 
 echo_stamp "#2 Set wpa_supplicant country"
 
-cat << EOF >> /etc/wpa_supplicant/wpa_supplicant.conf
+mkdir -p /etc/wpa_supplicant
+if [ -f /etc/wpa_supplicant/wpa_supplicant.conf ]; then
+    cat << EOF >> /etc/wpa_supplicant/wpa_supplicant.conf
 country=GB
 EOF
+else
+    cat << EOF > /etc/wpa_supplicant/wpa_supplicant.conf
+country=GB
+EOF
+fi
 
 echo_stamp "#3 Write dhcp-config to /etc/dnsmasq.conf"
 

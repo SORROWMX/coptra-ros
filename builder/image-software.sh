@@ -187,6 +187,7 @@ my_travis_retry pip3 install pyzbar
 
 echo_stamp "Setup ROS environment"
 # Create rosout symlink
+mkdir -p /opt/ros/noetic/share/rosout
 ln -s /opt/ros/noetic/lib/rosout/rosout /opt/ros/noetic/share/rosout/rosout
 
 # Setup ROS environment files
@@ -243,6 +244,7 @@ sed -i 's/XKBLAYOUT="gb"/XKBLAYOUT="us"/g' /etc/default/keyboard
 
 echo_stamp "Setup camera OV5647"
 # Create device tree overlay for OV5647
+mkdir -p /tmp
 cat > /tmp/opi3b-v2-ov5647-enable.dts << 'EOF'
 /dts-v1/;
 /plugin/;
@@ -261,10 +263,17 @@ cat > /tmp/opi3b-v2-ov5647-enable.dts << 'EOF'
 &rkisp_vir0 { status = "okay"; };
 EOF
 
+mkdir -p /boot/dtb/rockchip/overlay
 dtc -@ -I dts -O dtb -o /boot/dtb/rockchip/overlay/rk356x-ov5647-enable.dtbo /tmp/opi3b-v2-ov5647-enable.dts
 
 # Add overlay to orangepiEnv.txt
-sed -i '/^overlay_prefix=/a overlays=ov5647-enable' /boot/orangepiEnv.txt
+if [ -f /boot/orangepiEnv.txt ]; then
+    sed -i '/^overlay_prefix=/a overlays=ov5647-enable' /boot/orangepiEnv.txt
+else
+    echo_stamp "Warning: /boot/orangepiEnv.txt not found, creating it"
+    echo "overlay_prefix=rockchip" > /boot/orangepiEnv.txt
+    echo "overlays=ov5647-enable" >> /boot/orangepiEnv.txt
+fi
 
 # Create camera configuration script
 tee /usr/local/bin/cam-320x240.sh >/dev/null <<'EOF'
@@ -368,7 +377,12 @@ rm -f /etc/nginx/sites-enabled/default
 
 # Create directory for ROS web files
 mkdir -p /var/www/ros
-cp -r /home/orangepi/.ros/www/* /var/www/ros/
+if [ -d /home/orangepi/.ros/www ]; then
+    cp -r /home/orangepi/.ros/www/* /var/www/ros/
+else
+    echo_stamp "Warning: /home/orangepi/.ros/www not found, creating empty directory"
+    mkdir -p /var/www/ros/coptra
+fi
 chown -R www-data:www-data /var/www/ros
 chmod -R 755 /var/www/ros
 

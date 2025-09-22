@@ -124,6 +124,10 @@ ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec '/builder/image-init.sh' ${IMA
 # Copy cloned repository to the image
 # Include dotfiles in globs (asterisks)
 shopt -s dotglob
+
+# Create target directory structure first
+${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec '/bin/bash' -c 'mkdir -p /home/orangepi/catkin_ws/src/coptra'
+
 for dir in ${REPO_DIR}/*; do
   # Don't try to copy image into itself
   if [[ $dir != *"images" && $dir != *"imgcache" ]]; then
