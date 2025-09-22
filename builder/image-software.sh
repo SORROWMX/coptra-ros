@@ -104,6 +104,10 @@ apt-get clean
 apt-get autoremove -y
 apt-get autoclean
 
+# Fix any broken packages before updating
+echo_stamp "Fixing any broken packages before update"
+apt-get --fix-broken install -y || true
+
 # TODO: FIX ERROR: /usr/bin/apt-key: 596: /usr/bin/apt-key: cannot create /dev/null: Permission denied
 apt-get update
 # && apt upgrade -y
@@ -167,12 +171,28 @@ libnss-mdns \
 device-tree-compiler
 
 echo_stamp "Installing ROS dependencies"
-# Install python3-rosdistro first, then force install python3-rosdistro-modules to resolve conflicts
-my_travis_retry apt-get install --no-install-recommends -y python3-rosdistro
-# Force install python3-rosdistro-modules to override conflicts
-apt-get install --no-install-recommends -y --allow-downgrades --allow-remove-essential python3-rosdistro-modules || true
+# Force remove any existing conflicting packages first (based on Ask Ubuntu solutions)
+echo_stamp "Force removing conflicting packages"
+dpkg -r --force-all python3-rosdistro || true
+dpkg -r --force-all python3-rosdistro-modules || true
+dpkg -r --force-all python3-rosdep-modules || true
+apt-get autoremove -y
+
+# Clean up any broken packages
+echo_stamp "Cleaning up broken packages"
+apt-get --fix-broken install -y || true
+
+# Install python3-rosdistro-modules with force overwrite if needed
+echo_stamp "Installing python3-rosdistro-modules"
+my_travis_retry apt-get install --no-install-recommends -y python3-rosdistro-modules || {
+    echo_stamp "Standard install failed, trying force overwrite"
+    # If standard install fails, try force overwrite
+    dpkg -i --force-overwrite /var/cache/apt/archives/python3-rosdistro-modules*.deb || true
+    apt-get --fix-broken install -y || true
+}
 
 echo_stamp "Installing ROS packages"
+# Try standard installation first
 my_travis_retry apt-get install --no-install-recommends -y \
 python3-rosdep-modules \
 python3-rosinstall-generator \
@@ -198,11 +218,47 @@ libroscpp-core-dev \
 ros-noetic-rosbridge-server \
 ros-noetic-mavros-extras \
 ros-noetic-web-video-server \
-ros-noetic-tf2-web-republisher
+ros-noetic-tf2-web-republisher || {
+    echo_stamp "Standard ROS installation failed, trying force overwrite method"
+    # If standard installation fails, try force overwrite for problematic packages
+    for pkg in python3-rosdep-modules python3-rosdistro-modules; do
+        if dpkg -l | grep -q "^ii.*$pkg"; then
+            echo_stamp "Package $pkg already installed"
+        else
+            echo_stamp "Force installing $pkg"
+            dpkg -i --force-overwrite /var/cache/apt/archives/${pkg}*.deb || true
+        fi
+    done
+    # Try to fix dependencies after force installation
+    apt-get --fix-broken install -y || true
+}
 
 # Fix any broken packages
 echo_stamp "Fixing any broken packages"
 apt-get --fix-broken install -y || true
+
+# Additional cleanup based on Ask Ubuntu solutions
+echo_stamp "Performing additional cleanup"
+apt-get clean
+apt-get autoremove -y
+
+# Verify ROS installation
+echo_stamp "Verifying ROS installation"
+if dpkg -l | grep -q "ros-noetic-ros-core"; then
+    echo_stamp "ROS Noetic core packages installed successfully" SUCCESS
+else
+    echo_stamp "Warning: ROS Noetic core packages may not be properly installed" ERROR
+    # Try one more time to fix broken packages
+    echo_stamp "Attempting final fix for broken packages"
+    apt-get --fix-broken install -y || true
+fi
+
+# Check for any remaining broken packages
+echo_stamp "Checking for remaining broken packages"
+if apt list --broken 2>/dev/null | grep -q "broken"; then
+    echo_stamp "Found broken packages, attempting to fix" ERROR
+    apt-get --fix-broken install -y || true
+fi
 
 # Clean up after package installation to free space
 echo_stamp "Cleaning up after package installation"
