@@ -49,9 +49,20 @@ if [ -b "${LOOP_DEV}p1" ]; then
 fi
 
 # Setup QEMU for ARM64 emulation
-if [ -f /usr/bin/qemu-aarch64-static ]; then
-    cp /usr/bin/qemu-aarch64-static "$TEMP_DIR/usr/bin/"
-    echo_stamp "Copied QEMU aarch64 static"
+QEMU_BINARY=""
+for qemu_path in /usr/bin/qemu-aarch64-static /usr/bin/qemu-arm-static /usr/bin/qemu-aarch64 /usr/bin/qemu-arm; do
+    if [ -f "$qemu_path" ]; then
+        QEMU_BINARY="$qemu_path"
+        echo_stamp "Found QEMU binary: $qemu_path"
+        break
+    fi
+done
+
+if [ -n "$QEMU_BINARY" ]; then
+    cp "$QEMU_BINARY" "$TEMP_DIR/usr/bin/"
+    echo_stamp "Copied QEMU binary to chroot"
+else
+    echo_stamp "Warning: No QEMU binary found for ARM emulation"
 fi
 
 # Bind mount necessary directories
@@ -113,9 +124,9 @@ case "$COMMAND" in
         echo_stamp "Executing script in chroot: $CHROOT_SCRIPT_PATH"
         
         # Try to use QEMU directly if available
-        if [ -f "/usr/bin/qemu-aarch64-static" ]; then
-            echo_stamp "Using QEMU aarch64 static for execution"
-            /usr/bin/qemu-aarch64-static "$TEMP_DIR$CHROOT_SCRIPT_PATH" "$@"
+        if [ -n "$QEMU_BINARY" ]; then
+            echo_stamp "Using QEMU for execution: $QEMU_BINARY"
+            "$QEMU_BINARY" "$TEMP_DIR$CHROOT_SCRIPT_PATH" "$@"
         else
             # Fallback to chroot (may not work in Docker)
             echo_stamp "Using chroot for execution (fallback)"
