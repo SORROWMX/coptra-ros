@@ -89,15 +89,10 @@ echo_stamp "Update apt cache"
 # TODO: FIX ERROR: /usr/bin/apt-key: 596: /usr/bin/apt-key: cannot create /dev/null: Permission denied
 apt-get update
 # && apt upgrade -y
-echo_stamp "Install libgeographic-dev from Ubuntu (required for ros-noetic-mavros)"
-# Install libgeographic-dev from Ubuntu since it's not available in Debian Bookworm
-cd /tmp
-wget http://archive.ubuntu.com/ubuntu/pool/universe/g/geographiclib/libgeographic17_1.49-2_arm64.deb
-wget http://archive.ubuntu.com/ubuntu/pool/universe/g/geographiclib/libgeographic-dev_1.49-2_arm64.deb
-dpkg -i libgeographic17_1.49-2_arm64.deb libgeographic-dev_1.49-2_arm64.deb
-apt-get install -f -y  # Fix any dependency issues
-cd /
-rm -f /tmp/libgeographic*.deb
+echo_stamp "Skip libgeographic-dev installation - using libgeographiclib-dev instead"
+# Note: libgeographiclib-dev is preferred for ROS Noetic MAVROS
+# The Ubuntu libgeographic-dev packages conflict with libgeographiclib-dev
+# We'll use libgeographiclib-dev from Debian repositories instead
 # Let's retry fetching those packages several times, just in case
 echo_stamp "Software installing"
 my_travis_retry apt-get install --no-install-recommends -y \
@@ -133,8 +128,8 @@ python3-dateutil \
 python3-docutils \
 python3-yaml \
 catkin-tools \
-libgeographiclib-dev \
-libgeographiclib23 \
+libgeographic19 \
+libgeographic-dev \
 ros-noetic-ros-core \
 ros-noetic-ros-base \
 ros-noetic-ros-comm \
