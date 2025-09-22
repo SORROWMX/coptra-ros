@@ -82,7 +82,10 @@ get_image() {
 
 get_image ${IMAGE_PATH} ${SOURCE_IMAGE}
 
-${BUILDER_DIR}/image-resize.sh ${IMAGE_PATH} max '7G'
+# Resize image to maximum 7GB
+echo_stamp "Resizing image to maximum 7GB"
+docker run --privileged --rm -v /dev:/dev -v $(pwd):/builder/repo smirart/img-tool:v0.1 /builder/image-resize.sh ${IMAGE_PATH} max '7G'
+echo_stamp "Image resizing complete" "SUCCESS"
 
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/init_rpi.sh' '/root/'
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/hardware_setup.sh' '/root/'
