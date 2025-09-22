@@ -80,18 +80,13 @@ my_travis_retry rosdep update --include-eol-distros
 
 export ROS_IP='127.0.0.1' # needed for running tests
 
-# echo_stamp "Reconfiguring Coptra repository for simplier unshallowing"
-cd /home/orangepi/catkin_ws/src/coptra
-
 # Clone SORROWMX/coptra-ros repository if not exists
 if [ ! -d "/home/orangepi/catkin_ws/src/coptra-ros" ]; then
     echo_stamp "Cloning SORROWMX/coptra-ros repository"
     cd /home/orangepi/catkin_ws/src
     git clone https://github.com/SORROWMX/coptra-ros.git
-    cd /home/orangepi/catkin_ws/src/coptra
+    cd /home/orangepi/catkin_ws
 fi
-
-git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
 
 echo_stamp "Installing additional ROS packages for Orange Pi"
 apt install -y --no-install-recommends \
@@ -110,7 +105,7 @@ cd /home/orangepi/catkin_ws
 my_travis_retry rosdep install -y --from-paths src --ignore-src --rosdistro ${ROS_DISTRO} --os=debian:bookworm \
   --skip-keys=gazebo_ros --skip-keys=gazebo_plugins
 my_travis_retry pip3 install wheel
-my_travis_retry pip3 install -r /home/orangepi/catkin_ws/src/coptra/coptra/requirements.txt
+my_travis_retry pip3 install -r /home/orangepi/catkin_ws/src/coptra-ros/coptra/requirements.txt
 source /opt/ros/${ROS_DISTRO}/setup.bash
 
 # Configure catkin workspace
@@ -124,11 +119,9 @@ catkin build
 source install/setup.bash
 
 echo_stamp "Install clever package (for backwards compatibility)"
-cd /home/orangepi/catkin_ws/src/coptra/builder/assets/clever
+cd /home/orangepi/catkin_ws/src/coptra-ros/builder/assets/clever
 ./setup.py install
 rm -rf build  # remove build artifacts
-
-cd /home/orangepi/catkin_ws/src/coptra
 
 
 echo_stamp "Change permissions for catkin_ws"
@@ -157,11 +150,19 @@ else
 fi
 
 echo_stamp "Make systemd services symlinks"
-ln -s /home/orangepi/catkin_ws/src/coptra/builder/assets/coptra.service /lib/systemd/system/
-ln -s /home/orangepi/catkin_ws/src/coptra/builder/assets/roscore.service /lib/systemd/system/
-# validate
-[ -f /lib/systemd/system/coptra.service ]
-[ -f /lib/systemd/system/roscore.service ]
+if [ -f "/home/orangepi/catkin_ws/src/coptra-ros/builder/assets/coptra.service" ]; then
+    ln -s /home/orangepi/catkin_ws/src/coptra-ros/builder/assets/coptra.service /lib/systemd/system/
+    echo_stamp "coptra.service symlink created"
+else
+    echo_stamp "Warning: coptra.service not found, skipping symlink creation"
+fi
+
+if [ -f "/home/orangepi/catkin_ws/src/coptra-ros/builder/assets/roscore.service" ]; then
+    ln -s /home/orangepi/catkin_ws/src/coptra-ros/builder/assets/roscore.service /lib/systemd/system/
+    echo_stamp "roscore.service symlink created"
+else
+    echo_stamp "Warning: roscore.service not found, skipping symlink creation"
+fi
 
 # Udev rules removed as requested
 
