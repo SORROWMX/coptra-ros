@@ -83,6 +83,7 @@ jobs:
               cp /builder/repo/builder/image-software.sh /builder/
               cp /builder/repo/builder/image-network.sh /builder/
               cp /builder/repo/builder/image-ros.sh /builder/
+              cp /builder/repo/builder/image-validate.sh /builder/
               chmod +x /builder/image-*.sh
               
               # Navigate to repo and run build script
