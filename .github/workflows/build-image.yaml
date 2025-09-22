@@ -29,6 +29,16 @@ jobs:
           chmod +x builder/image-*.sh
           chmod +x builder/assets/*.sh
           
+          # Create missing scripts if they don't exist
+          if [ ! -f "builder/image-chroot.sh" ]; then
+            echo "Error: image-chroot.sh not found"
+            exit 1
+          fi
+          if [ ! -f "builder/image-resize.sh" ]; then
+            echo "Error: image-resize.sh not found"
+            exit 1
+          fi
+          
           # Verify script permissions and structure
           ls -la builder/image-build.sh
           echo "=== Directory structure ==="
