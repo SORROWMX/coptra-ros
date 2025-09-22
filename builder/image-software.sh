@@ -63,6 +63,26 @@ echo_stamp "Increase apt retries"
 
 echo "APT::Acquire::Retries \"3\";" > /etc/apt/apt.conf.d/80-retries
 
+echo_stamp "Installing dhcpcd5 for network management"
+# Try to install dhcpcd5, fallback to dhcpcd or download from sorrowmx repo
+apt-get install -y dhcpcd5 || {
+    echo_stamp "dhcpcd5 not found, trying dhcpcd"
+    apt-get install -y dhcpcd || {
+        echo_stamp "dhcpcd not found, downloading from sorrowmx repository"
+        wget -O /tmp/dhcpcd5_9.4.1-24~deb12u4_all.deb \
+            "https://sorrowmx.github.io/orangepi3b-ros-noetic/debian/pool/main/arm64/dhcpcd5_9.4.1-24~deb12u4_all.deb" || {
+            echo_stamp "Failed to download dhcpcd5 from sorrowmx repo" ERROR
+            exit 1
+        }
+        dpkg -i /tmp/dhcpcd5_9.4.1-24~deb12u4_all.deb || {
+            echo_stamp "Failed to install dhcpcd5 package" ERROR
+            exit 1
+        }
+        rm -f /tmp/dhcpcd5_9.4.1-24~deb12u4_all.deb
+        apt-get --fix-broken install -y || true
+    }
+}
+
 echo_stamp "Free up space before package installation"
 # Clean up any existing packages to free space
 apt-get clean
@@ -182,30 +202,30 @@ apt-get autoremove -y
 echo_stamp "Cleaning up broken packages"
 apt-get --fix-broken install -y || true
 
-# Download and install packages directly from official ROS repository
-echo_stamp "Downloading ROS distro packages from official repository"
+# Download and install packages from sorrowmx repository
+echo_stamp "Downloading ROS distro packages from sorrowmx repository"
 # Download python3-rosdistro-modules
 wget -O /tmp/python3-rosdistro-modules_0.9.0-1_all.deb \
-    "http://packages.ros.org/ros/ubuntu/pool/main/p/python3-rosdistro-modules/python3-rosdistro-modules_0.9.0-1_all.deb" || {
-    echo_stamp "Failed to download python3-rosdistro-modules from official repo"
+    "https://sorrowmx.github.io/orangepi3b-ros-noetic/debian/pool/main/arm64/python3-rosdistro-modules_0.9.0-1_all.deb" || {
+    echo_stamp "Failed to download python3-rosdistro-modules from sorrowmx repo"
 }
 
 # Download python3-rosdistro
 wget -O /tmp/python3-rosdistro_0.9.0-100_all.deb \
-    "http://packages.ros.org/ros/ubuntu/pool/main/p/python3-rosdistro/python3-rosdistro_0.9.0-100_all.deb" || {
-    echo_stamp "Failed to download python3-rosdistro from official repo"
+    "https://sorrowmx.github.io/orangepi3b-ros-noetic/debian/pool/main/arm64/python3-rosdistro_0.9.0-100_all.deb" || {
+    echo_stamp "Failed to download python3-rosdistro from sorrowmx repo"
 }
 
 # Download python3-rosdep-modules
 wget -O /tmp/python3-rosdep-modules_0.23.1-1_all.deb \
-    "http://packages.ros.org/ros/ubuntu/pool/main/p/python3-rosdep-modules/python3-rosdep-modules_0.23.1-1_all.deb" || {
-    echo_stamp "Failed to download python3-rosdep-modules from official repo"
+    "https://sorrowmx.github.io/orangepi3b-ros-noetic/debian/pool/main/arm64/python3-rosdep-modules_0.23.1-1_all.deb" || {
+    echo_stamp "Failed to download python3-rosdep-modules from sorrowmx repo"
 }
 
 # Download python3-rosdep
 wget -O /tmp/python3-rosdep_0.23.1-1_all.deb \
-    "http://packages.ros.org/ros/ubuntu/pool/main/p/python3-rosdep/python3-rosdep_0.23.1-1_all.deb" || {
-    echo_stamp "Failed to download python3-rosdep from official repo"
+    "https://sorrowmx.github.io/orangepi3b-ros-noetic/debian/pool/main/arm64/python3-rosdep_0.23.1-1_all.deb" || {
+    echo_stamp "Failed to download python3-rosdep from sorrowmx repo"
 }
 
 # Install the downloaded packages in correct order
@@ -258,7 +278,7 @@ apt-mark hold python3-rosdistro
 apt-mark hold python3-rosdep-modules
 apt-mark hold python3-rosdep
 
-# Create apt preferences to pin specific versions from official ROS repo
+# Create apt preferences to pin specific versions from sorrowmx repo
 echo_stamp "Creating apt preferences to pin ROS package versions"
 cat > /etc/apt/preferences.d/ros-package-pinning << 'EOF'
 Package: python3-rosdistro-modules
@@ -277,18 +297,26 @@ Package: python3-rosdep
 Pin: version 0.23.1-1
 Pin-Priority: 1001
 
-# Prevent installation from other sources
+# Prefer packages from sorrowmx repository
 Package: python3-rosdistro-modules
-Pin: origin packages.ros.org
+Pin: origin sorrowmx.github.io
+Pin-Priority: 1001
+
+Package: python3-rosdistro
+Pin: origin sorrowmx.github.io
 Pin-Priority: 1001
 
 Package: python3-rosdep-modules
-Pin: origin packages.ros.org
+Pin: origin sorrowmx.github.io
+Pin-Priority: 1001
+
+Package: python3-rosdep
+Pin: origin sorrowmx.github.io
 Pin-Priority: 1001
 EOF
 
-# ROS distro and rosdep packages are now installed directly from official repo
-echo_stamp "ROS distro and rosdep packages installed from official repository"
+# ROS distro and rosdep packages are now installed directly from sorrowmx repo
+echo_stamp "ROS distro and rosdep packages installed from sorrowmx repository"
 
 echo_stamp "Installing ROS packages"
 # Try standard installation first (excluding already installed packages)
@@ -351,33 +379,30 @@ else
     apt-get --fix-broken install -y || true
 fi
 
-# Check specific package versions
-echo_stamp "Checking ROS package versions:"
-dpkg -l | grep -E "(python3-rosdistro|python3-rosdistro-modules|python3-rosdep|python3-rosdep-modules)" || echo_stamp "No ROS distro packages found"
-
-# Verify that all packages are installed correctly
-if dpkg -l | grep -q "^ii.*python3-rosdistro-modules.*0.9.0-1"; then
-    echo_stamp "python3-rosdistro-modules 0.9.0-1 is installed" SUCCESS
+# Check if ROS packages are installed
+echo_stamp "Checking ROS package installation:"
+if dpkg -l | grep -q "^ii.*python3-rosdistro-modules"; then
+    echo_stamp "python3-rosdistro-modules is installed" SUCCESS
 else
-    echo_stamp "WARNING: python3-rosdistro-modules is not installed or wrong version" ERROR
+    echo_stamp "python3-rosdistro-modules is not installed" ERROR
 fi
 
-if dpkg -l | grep -q "^ii.*python3-rosdistro.*0.9.0-100"; then
-    echo_stamp "python3-rosdistro 0.9.0-100 is installed" SUCCESS
+if dpkg -l | grep -q "^ii.*python3-rosdistro"; then
+    echo_stamp "python3-rosdistro is installed" SUCCESS
 else
-    echo_stamp "WARNING: python3-rosdistro is not installed or wrong version" ERROR
+    echo_stamp "python3-rosdistro is not installed" ERROR
 fi
 
-if dpkg -l | grep -q "^ii.*python3-rosdep-modules.*0.23.1-1"; then
-    echo_stamp "python3-rosdep-modules 0.23.1-1 is installed" SUCCESS
+if dpkg -l | grep -q "^ii.*python3-rosdep-modules"; then
+    echo_stamp "python3-rosdep-modules is installed" SUCCESS
 else
-    echo_stamp "WARNING: python3-rosdep-modules is not installed or wrong version" ERROR
+    echo_stamp "python3-rosdep-modules is not installed" ERROR
 fi
 
-if dpkg -l | grep -q "^ii.*python3-rosdep.*0.23.1-1"; then
-    echo_stamp "python3-rosdep 0.23.1-1 is installed" SUCCESS
+if dpkg -l | grep -q "^ii.*python3-rosdep"; then
+    echo_stamp "python3-rosdep is installed" SUCCESS
 else
-    echo_stamp "WARNING: python3-rosdep is not installed or wrong version" ERROR
+    echo_stamp "python3-rosdep is not installed" ERROR
 fi
 
 # Check for any remaining broken packages

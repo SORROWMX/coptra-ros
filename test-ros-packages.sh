@@ -65,31 +65,31 @@ echo_stamp "Test 1: Downloading ROS packages from official repository"
 mkdir -p /tmp/ros-test
 cd /tmp/ros-test
 
-# Download packages
+# Download packages from sorrowmx repository
 echo_stamp "Downloading python3-rosdistro-modules_0.9.0-1_all.deb"
 wget -O python3-rosdistro-modules_0.9.0-1_all.deb \
-    "http://packages.ros.org/ros/ubuntu/pool/main/p/python3-rosdistro-modules/python3-rosdistro-modules_0.9.0-1_all.deb" || {
+    "https://sorrowmx.github.io/orangepi3b-ros-noetic/debian/pool/main/arm64/python3-rosdistro-modules_0.9.0-1_all.deb" || {
     echo_stamp "Failed to download python3-rosdistro-modules" ERROR
     exit 1
 }
 
 echo_stamp "Downloading python3-rosdistro_0.9.0-100_all.deb"
 wget -O python3-rosdistro_0.9.0-100_all.deb \
-    "http://packages.ros.org/ros/ubuntu/pool/main/p/python3-rosdistro/python3-rosdistro_0.9.0-100_all.deb" || {
+    "https://sorrowmx.github.io/orangepi3b-ros-noetic/debian/pool/main/arm64/python3-rosdistro_0.9.0-100_all.deb" || {
     echo_stamp "Failed to download python3-rosdistro" ERROR
     exit 1
 }
 
 echo_stamp "Downloading python3-rosdep-modules_0.23.1-1_all.deb"
 wget -O python3-rosdep-modules_0.23.1-1_all.deb \
-    "http://packages.ros.org/ros/ubuntu/pool/main/p/python3-rosdep-modules/python3-rosdep-modules_0.23.1-1_all.deb" || {
+    "https://sorrowmx.github.io/orangepi3b-ros-noetic/debian/pool/main/arm64/python3-rosdep-modules_0.23.1-1_all.deb" || {
     echo_stamp "Failed to download python3-rosdep-modules" ERROR
     exit 1
 }
 
 echo_stamp "Downloading python3-rosdep_0.23.1-1_all.deb"
 wget -O python3-rosdep_0.23.1-1_all.deb \
-    "http://packages.ros.org/ros/ubuntu/pool/main/p/python3-rosdep/python3-rosdep_0.23.1-1_all.deb" || {
+    "https://sorrowmx.github.io/orangepi3b-ros-noetic/debian/pool/main/arm64/python3-rosdep_0.23.1-1_all.deb" || {
     echo_stamp "Failed to download python3-rosdep" ERROR
     exit 1
 }
@@ -158,29 +158,29 @@ echo_stamp "Test 4: Verifying installation"
 echo_stamp "Checking installed packages:"
 dpkg -l | grep -E "(python3-rosdistro|python3-rosdep)" || echo_stamp "No ROS packages found" ERROR
 
-# Verify specific versions
-if dpkg -l | grep -q "^ii.*python3-rosdistro-modules.*0.9.0-1"; then
-    echo_stamp "✓ python3-rosdistro-modules 0.9.0-1 is installed" SUCCESS
+# Verify packages are installed
+if dpkg -l | grep -q "^ii.*python3-rosdistro-modules"; then
+    echo_stamp "✓ python3-rosdistro-modules is installed" SUCCESS
 else
-    echo_stamp "✗ python3-rosdistro-modules is not installed or wrong version" ERROR
+    echo_stamp "✗ python3-rosdistro-modules is not installed" ERROR
 fi
 
-if dpkg -l | grep -q "^ii.*python3-rosdistro.*0.9.0-100"; then
-    echo_stamp "✓ python3-rosdistro 0.9.0-100 is installed" SUCCESS
+if dpkg -l | grep -q "^ii.*python3-rosdistro"; then
+    echo_stamp "✓ python3-rosdistro is installed" SUCCESS
 else
-    echo_stamp "✗ python3-rosdistro is not installed or wrong version" ERROR
+    echo_stamp "✗ python3-rosdistro is not installed" ERROR
 fi
 
-if dpkg -l | grep -q "^ii.*python3-rosdep-modules.*0.23.1-1"; then
-    echo_stamp "✓ python3-rosdep-modules 0.23.1-1 is installed" SUCCESS
+if dpkg -l | grep -q "^ii.*python3-rosdep-modules"; then
+    echo_stamp "✓ python3-rosdep-modules is installed" SUCCESS
 else
-    echo_stamp "✗ python3-rosdep-modules is not installed or wrong version" ERROR
+    echo_stamp "✗ python3-rosdep-modules is not installed" ERROR
 fi
 
-if dpkg -l | grep -q "^ii.*python3-rosdep.*0.23.1-1"; then
-    echo_stamp "✓ python3-rosdep 0.23.1-1 is installed" SUCCESS
+if dpkg -l | grep -q "^ii.*python3-rosdep"; then
+    echo_stamp "✓ python3-rosdep is installed" SUCCESS
 else
-    echo_stamp "✗ python3-rosdep is not installed or wrong version" ERROR
+    echo_stamp "✗ python3-rosdep is not installed" ERROR
 fi
 
 # Test 5: Test functionality

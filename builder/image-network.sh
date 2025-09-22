@@ -67,11 +67,7 @@ domain-needed
 quiet-dhcp6
 EOF
 
-echo_stamp "#4 Install dhcpcd for static IP management"
-
-apt-get install -y dhcpcd5
-
-echo_stamp "#5 Configure NetworkManager to exclude wlan0"
+echo_stamp "#4 Configure NetworkManager to exclude wlan0"
 
 # Create NetworkManager config to exclude wlan0 from management
 mkdir -p /etc/NetworkManager/conf.d
@@ -80,7 +76,7 @@ cat << 'EOF' > /etc/NetworkManager/conf.d/99-unmanaged-devices.conf
 unmanaged-devices=interface-name:wlan0
 EOF
 
-echo_stamp "#6 Create WiFi mode switcher script"
+echo_stamp "#5 Create WiFi mode switcher script"
 
 # Create network mode switcher script
 cat << 'EOF' > /usr/local/bin/network-switch
