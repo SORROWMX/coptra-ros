@@ -96,6 +96,15 @@ case "$COMMAND" in
             exit 1
         fi
         echo_stamp "Executing script: $SCRIPT"
+        
+        # Copy script to chroot if it's not already there
+        SCRIPT_NAME=$(basename "$SCRIPT")
+        if [ ! -f "$TEMP_DIR$SCRIPT" ]; then
+            echo_stamp "Copying script $SCRIPT to chroot"
+            cp "$SCRIPT" "$TEMP_DIR$SCRIPT"
+            chmod +x "$TEMP_DIR$SCRIPT"
+        fi
+        
         chroot "$TEMP_DIR" /bin/bash "$SCRIPT" "$@"
         echo_stamp "Script execution complete"
         ;;
