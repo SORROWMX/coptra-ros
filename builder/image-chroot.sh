@@ -99,7 +99,7 @@ case "$COMMAND" in
         
         # Copy script to chroot if it's not already there
         SCRIPT_NAME=$(basename "$SCRIPT")
-        CHROOT_SCRIPT_PATH="/builder/$SCRIPT_NAME"
+        CHROOT_SCRIPT_PATH="/builder/repo/builder/$SCRIPT_NAME"
         
         if [ ! -f "$TEMP_DIR$CHROOT_SCRIPT_PATH" ]; then
             echo_stamp "Copying script $SCRIPT to chroot as $CHROOT_SCRIPT_PATH"
