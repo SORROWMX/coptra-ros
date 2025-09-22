@@ -285,26 +285,26 @@ set -e
 MEDIA=/dev/media0
 DEV=/dev/video0
 
-# подождать появления узлов
+# Wait for device nodes to appear
 for i in 1 2 3 4 5; do [ -e "$MEDIA" ] && [ -e "$DEV" ] && break; sleep 1; done
 
-# освободить девайсы
+# Release devices
 fuser -kv /dev/video0 /dev/video1 /dev/video2 2>/dev/null || true
 
-# входной тракт: RAW10 640x480
+# Input pipeline: RAW10 640x480
 media-ctl -d $MEDIA -V '"m00_b_ov5647 1-0036":0 [fmt:SGBRG10_1X10/640x480]'
 media-ctl -d $MEDIA -V '"rockchip-csi2-dphy1":0 [fmt:SGBRG10_1X10/640x480]'
 media-ctl -d $MEDIA -V '"rkisp-csi-subdev":0  [fmt:SGBRG10_1X10/640x480]'
 media-ctl -d $MEDIA -V '"rkisp-isp-subdev":0  [fmt:SGBRG10_1X10/640x480]'
 
-# выровнять crop'ы ISP
+# Align ISP crops
 media-ctl -d $MEDIA --set-v4l2 '"rkisp-isp-subdev":0[crop:(0,0)/640x480]'
 media-ctl -d $MEDIA --set-v4l2 '"rkisp-isp-subdev":2[crop:(0,0)/640x480]'
 
-# выход ISP
+# ISP output
 media-ctl -d $MEDIA -V '"rkisp-isp-subdev":2 [fmt:YUYV8_2X8/640x480]'
 
-# формат ноды захвата: 320x240 NV12
+# Capture node format: 320x240 NV12
 v4l2-ctl -d $DEV --set-fmt-video=width=320,height=240,pixelformat=NV12 || true
 EOF
 
@@ -336,26 +336,26 @@ server {
     listen 80;
     server_name localhost;
     
-    # Главная страница - перенаправляем на coptra
+    # Main page - redirect to coptra
     location = / {
         return 301 /coptra/;
     }
     
-    # Статические файлы из coptra/www
+    # Static files from coptra/www
     location /coptra/ {
         alias /var/www/ros/coptra/;
         index index.html;
         try_files $uri $uri/ =404;
     }
     
-    # Статические файлы из coptra_blocks/www
+    # Static files from coptra_blocks/www
     location /coptra_blocks/ {
         alias /var/www/ros/coptra_blocks/;
         index index.html;
         try_files $uri $uri/ =404;
     }
     
-    # Для статических файлов (CSS, JS, изображения)
+    # For static files (CSS, JS, images)
     location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg)$ {
         root /var/www/ros;
         expires 1y;

@@ -52,6 +52,9 @@ ls   # Should show: builder/ coptra/ coptra_blocks/ etc.
 
 # Run automated build script
 sudo ./build-on-vm.sh
+
+# Or force rebuild (downloads and rebuilds everything)
+FORCE_REBUILD=true sudo ./build-on-vm.sh
 ```
 
 ### Method 2: Manual build
@@ -126,6 +129,35 @@ After successful build, image will be in `images/` folder:
 ```bash
 ls -la images/
 # Should see file: coptra_<commit-hash>.img
+```
+
+## Caching and rebuild options
+
+### Automatic caching
+The build script automatically caches downloaded files and built images:
+- **ZIP archives** are cached in `images/` directory
+- **Built images** are reused if they exist
+- **Subsequent builds** are much faster (skip download and extraction)
+
+### Force rebuild
+To force a complete rebuild (useful for testing changes):
+```bash
+# Force rebuild everything
+FORCE_REBUILD=true sudo ./build-on-vm.sh
+
+# Or set environment variable
+export FORCE_REBUILD=true
+sudo ./build-on-vm.sh
+```
+
+### Clean cache
+To clean all cached files:
+```bash
+# Remove all cached images and archives
+rm -rf images/*.img images/*.zip
+
+# Or clean everything
+sudo ./build-on-vm.sh  # Will re-download and rebuild
 ```
 
 ## Compress image (optional)

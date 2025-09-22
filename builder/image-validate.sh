@@ -26,7 +26,7 @@ cd /home/orangepi/catkin_ws/src/coptra/builder/test/
 ./tests.sh
 ./tests.py
 ./tests_py3.py
-[[ $(./test_qr.py) == "Found QRCODE with data Проверка Unicode with center at x=66.0, y=66.0" ]] 
+[[ $(./test_qr.py) == "Found QRCODE with data Unicode Test with center at x=66.0, y=66.0" ]] 
 [[ $(./tests_clever.py) == "Warning: clever package is renamed to coptra" ]]  # test backwards compatibility
 
 systemctl stop roscore

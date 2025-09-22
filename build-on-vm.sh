@@ -82,9 +82,20 @@ for script in builder/image-build.sh builder/image-chroot.sh builder/image-softw
     fi
 done
 
+# Check for existing images
+echo "Checking for existing images..."
+if ls images/*.img 1> /dev/null 2>&1; then
+    echo "Found existing images:"
+    ls -lh images/*.img
+    echo ""
+    echo "Note: If you want to force rebuild, use: FORCE_REBUILD=true sudo ./build-on-vm.sh"
+    echo ""
+fi
+
 # Start build process
 echo "Starting image build..."
 echo "   This may take 1-3 hours depending on VM performance"
+echo "   (Will skip download if image already exists)"
 echo ""
 
 # Run main build script

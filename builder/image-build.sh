@@ -29,6 +29,9 @@ export DEBIAN_FRONTEND=${DEBIAN_FRONTEND:='noninteractive'}
 export LANG=${LANG:='C.UTF-8'}
 export LC_ALL=${LC_ALL:='C.UTF-8'}
 
+# Force rebuild option
+FORCE_REBUILD=${FORCE_REBUILD:-false}
+
 echo_stamp() {
   # TEMPLATE: echo_stamp <TEXT> <TYPE>
   # TYPE: SUCCESS, ERROR, INFO
@@ -88,6 +91,18 @@ get_image() {
   local RPI_ARCHIVE_NAME=$(basename $2)
   local RPI_IMAGE_NAME=$(echo ${RPI_ARCHIVE_NAME} | sed 's/\.zip$/.img/')
 
+  # Check if final image already exists
+  if [ -f "$1" ] && [ "$FORCE_REBUILD" != "true" ]; then
+    echo_stamp "Image already exists: $1" "SUCCESS"
+    echo_stamp "Skipping download and extraction"
+    echo_stamp "Use FORCE_REBUILD=true to force rebuild"
+    return 0
+  elif [ -f "$1" ] && [ "$FORCE_REBUILD" = "true" ]; then
+    echo_stamp "Force rebuild enabled, removing existing image: $1"
+    rm -f "$1"
+  fi
+
+  # Check if archive exists
   if [ ! -e "${BUILD_DIR}/${RPI_ARCHIVE_NAME}" ]; then
     echo_stamp "Downloading original Linux distribution"
     
@@ -117,8 +132,10 @@ get_image() {
       exit 1
     fi
     
-    echo_stamp "Downloading complete" "SUCCESS" \
-  else echo_stamp "Linux distribution already donwloaded"; fi
+    echo_stamp "Downloading complete" "SUCCESS"
+  else 
+    echo_stamp "Archive already downloaded: ${BUILD_DIR}/${RPI_ARCHIVE_NAME}"
+  fi
 
   echo_stamp "Extracting Linux distribution image"
   
