@@ -79,7 +79,11 @@ jobs:
               mkdir -p /builder
               cp /builder/repo/builder/image-chroot.sh /builder/
               cp /builder/repo/builder/image-resize.sh /builder/
-              chmod +x /builder/image-chroot.sh /builder/image-resize.sh
+              cp /builder/repo/builder/image-init.sh /builder/
+              cp /builder/repo/builder/image-software.sh /builder/
+              cp /builder/repo/builder/image-network.sh /builder/
+              cp /builder/repo/builder/image-ros.sh /builder/
+              chmod +x /builder/image-*.sh
               
               # Navigate to repo and run build script
               cd /builder/repo && chmod +x builder/image-build.sh && ./builder/image-build.sh
