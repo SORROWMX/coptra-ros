@@ -1,0 +1,349 @@
+name: Orange Pi 3B Coptra Image (pyavitz method with kernel 5.10)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-orange-pi-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Clone pyavitz debian-image-builder
+        run: |
+          git clone https://github.com/pyavitz/debian-image-builder.git
+          cd debian-image-builder
+          chmod +x install.sh
+          ./install.sh
+      
+      - name: Configure for Orange Pi 3B with kernel 5.10
+        run: |
+          cd debian-image-builder
+          
+          # Create configuration for Orange Pi 3B
+          cat > userdata.txt << 'EOF'
+          # Orange Pi 3B Configuration
+          NAME="Orange Pi 3B User"
+          USERNAME="orangepi"
+          PASSWORD="orangepi"
+          HOSTNAME="orangepi3b"
+          
+          # Distribution
+          DISTRO="debian"
+          RELEASE="bookworm"
+          
+          # Network Manager
+          NETWORKMANAGER="1"
+          
+          # U-Boot and Linux
+          UBOOT="v2025.01"
+          BRANCH="5.10.y"
+          BUILD="1"
+          MENUCONFIG="0"
+          COMPILER="gcc"
+          CCACHE="0"
+          
+          # Customize
+          DEFCONFIG="0"
+          NAME=""
+          
+          # User options
+          LOGGING="1"
+          VERBOSE="1"
+          DEVEL_ROOTFS="0"
+          COMPRESS_IMG="1"
+          USER_SCRIPTS="0"
+          USER_SERVICE="0"
+          EOF
+          
+          # Create custom configuration for Orange Pi 3B
+          cat > custom.txt << 'EOF'
+          # Orange Pi 3B specific settings
+          ENABLE_BOOT_EXT4="false"
+          ENABLE_BOOT_VFAT="true"
+          FSTYPE="ext4"
+          ENABLE_BOOTCMD="false"
+          ENABLE_EFI="false"
+          AML_EMMC="false"
+          ENABLE_PETITBOOT="false"
+          MMDEBSTRAP="true"
+          IMGSIZE="4096MB"
+          ENABLE_SHRINK="true"
+          IMG_COMPRESSION="xz"
+          EOF
+          
+          # Create Orange Pi 3B defconfig (based on Orange Pi 3 LTS)
+          mkdir -p defconfig
+          cat > defconfig/orangepi3b_defconfig << 'EOF'
+          # Orange Pi 3B defconfig based on Orange Pi 3 LTS
+          CONFIG_ARM64=y
+          CONFIG_ARCH_ROCKCHIP=y
+          CONFIG_SOC_ROCKCHIP_RK3566=y
+          CONFIG_ROCKCHIP_EFUSE=y
+          CONFIG_ROCKCHIP_IOMMU=y
+          CONFIG_ROCKCHIP_PM_DOMAINS=y
+          CONFIG_ROCKCHIP_SUSPEND_MODE=y
+          CONFIG_ROCKCHIP_THERMAL=y
+          CONFIG_ROCKCHIP_TIMER=y
+          CONFIG_ROCKCHIP_WATCHDOG=y
+          
+          # Camera support (rkcif, rkisp)
+          CONFIG_VIDEO_ROCKCHIP_CIF=y
+          CONFIG_VIDEO_ROCKCHIP_ISP=y
+          CONFIG_VIDEO_ROCKCHIP_ISP1=y
+          CONFIG_VIDEO_ROCKCHIP_RGA=y
+          CONFIG_VIDEO_ROCKCHIP_VDEC=y
+          CONFIG_VIDEO_ROCKCHIP_VENC=y
+          
+          # OV5647 camera support
+          CONFIG_VIDEO_OV5647=y
+          CONFIG_VIDEO_OV5640=y
+          CONFIG_VIDEO_OV2680=y
+          CONFIG_VIDEO_IMX219=y
+          CONFIG_VIDEO_IMX477=y
+          
+          # Media controller
+          CONFIG_MEDIA_CONTROLLER=y
+          CONFIG_MEDIA_CAMERA_SUPPORT=y
+          CONFIG_MEDIA_PLATFORM_SUPPORT=y
+          CONFIG_VIDEO_V4L2_SUBDEV_API=y
+          CONFIG_VIDEO_V4L2=y
+          CONFIG_VIDEOBUF2_CORE=y
+          CONFIG_VIDEOBUF2_MEMOPS=y
+          CONFIG_VIDEOBUF2_DMA_CONTIG=y
+          CONFIG_VIDEOBUF2_VMALLOC=y
+          
+          # I2C support
+          CONFIG_I2C=y
+          CONFIG_I2C_CHARDEV=y
+          CONFIG_I2C_ROCKCHIP=y
+          
+          # GPIO support
+          CONFIG_GPIO_ROCKCHIP=y
+          CONFIG_PINCTRL_ROCKCHIP=y
+          CONFIG_PINCTRL_RK3568=y
+          
+          # USB support
+          CONFIG_USB=y
+          CONFIG_USB_XHCI_HCD=y
+          CONFIG_USB_XHCI_PLATFORM=y
+          CONFIG_USB_OHCI_HCD=y
+          CONFIG_USB_OHCI_HCD_PLATFORM=y
+          CONFIG_USB_EHCI_HCD=y
+          CONFIG_USB_EHCI_HCD_PLATFORM=y
+          
+          # Network support
+          CONFIG_NETDEVICES=y
+          CONFIG_ETHERNET=y
+          CONFIG_NET_VENDOR_REALTEK=y
+          CONFIG_R8169=y
+          CONFIG_WLAN=y
+          CONFIG_CFG80211=y
+          CONFIG_MAC80211=y
+          CONFIG_RTL8189ES=y
+          CONFIG_RTL8189FS=y
+          CONFIG_RTL8192CU=y
+          CONFIG_RTL8192DU=y
+          CONFIG_RTL8192EU=y
+          CONFIG_RTL8192FU=y
+          CONFIG_RTL8723BS=y
+          CONFIG_RTL8723BU=y
+          CONFIG_RTL8723CS=y
+          CONFIG_RTL8723DS=y
+          CONFIG_RTL8812AU=y
+          CONFIG_RTL8821AU=y
+          CONFIG_RTL8821CU=y
+          CONFIG_RTL8822BS=y
+          CONFIG_RTL8822BU=y
+          CONFIG_RTL8822CS=y
+          CONFIG_RTL8822CU=y
+          
+          # Storage support
+          CONFIG_MMC=y
+          CONFIG_MMC_BLOCK=y
+          CONFIG_MMC_DW=y
+          CONFIG_MMC_DW_ROCKCHIP=y
+          CONFIG_MMC_SDHCI=y
+          CONFIG_MMC_SDHCI_PLTFM=y
+          CONFIG_MMC_SDHCI_OF_ARASAN=y
+          
+          # Filesystem support
+          CONFIG_EXT4_FS=y
+          CONFIG_VFAT_FS=y
+          CONFIG_FAT_DEFAULT_IOCHARSET="utf8"
+          CONFIG_NTFS_FS=y
+          CONFIG_NTFS_RW=y
+          
+          # Crypto support
+          CONFIG_CRYPTO_DEV_ROCKCHIP=y
+          CONFIG_ROCKCHIP_CRYPTO_V2=y
+          
+          # Power management
+          CONFIG_PM=y
+          CONFIG_PM_SLEEP=y
+          CONFIG_SUSPEND=y
+          CONFIG_HIBERNATION=y
+          CONFIG_CPU_FREQ=y
+          CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y
+          CONFIG_CPU_FREQ_GOV_PERFORMANCE=y
+          CONFIG_CPU_FREQ_GOV_POWERSAVE=y
+          CONFIG_CPU_FREQ_GOV_USERSPACE=y
+          CONFIG_CPU_FREQ_GOV_CONSERVATIVE=y
+          CONFIG_CPUFREQ_DT=y
+          CONFIG_ARM_ROCKCHIP_CPUFREQ=y
+          
+          # Debugging
+          CONFIG_DEBUG_FS=y
+          CONFIG_DEBUG_KERNEL=y
+          CONFIG_MAGIC_SYSRQ=y
+          CONFIG_MAGIC_SYSRQ_DEFAULT_ENABLE=0x1
+          EOF
+      
+      - name: Build Orange Pi 3B image with kernel 5.10
+        run: |
+          cd debian-image-builder
+          
+          # Set environment variables
+          export BOARD="orangepi3b"
+          export BRANCH="5.10.y"
+          export UBOOT="v2025.01"
+          
+          # Build the image
+          make ncompile
+          
+          # Check if image was created
+          ls -la output/images/
+      
+      - name: Add Coptra functionality to image
+        run: |
+          cd debian-image-builder
+          
+          # Mount the built image
+          IMAGE_FILE=$(ls output/images/*.img | head -1)
+          echo "Working with image: $IMAGE_FILE"
+          
+          # Create mount points
+          mkdir -p /tmp/orangepi3b/{boot,root}
+          
+          # Mount image
+          sudo losetup -fP "$IMAGE_FILE"
+          LOOP_DEV=$(sudo losetup -j "$IMAGE_FILE" | cut -d: -f1)
+          
+          # Mount partitions
+          sudo mount ${LOOP_DEV}p1 /tmp/orangepi3b/boot
+          sudo mount ${LOOP_DEV}p2 /tmp/orangepi3b/root
+          
+          # Copy our Coptra files
+          sudo cp -r /builder/repo/coptra /tmp/orangepi3b/root/home/orangepi/
+          sudo cp -r /builder/repo/coptra_blocks /tmp/orangepi3b/root/home/orangepi/
+          sudo cp -r /builder/repo/aruco_pose /tmp/orangepi3b/root/home/orangepi/
+          sudo cp -r /builder/repo/roswww_static /tmp/orangepi3b/root/home/orangepi/
+          
+          # Copy our builder assets
+          sudo mkdir -p /tmp/orangepi3b/root/opt/coptra
+          sudo cp -r /builder/repo/builder/assets /tmp/orangepi3b/root/opt/coptra/
+          
+          # Create Coptra installation script
+          sudo tee /tmp/orangepi3b/root/opt/coptra/install.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          echo "Installing Coptra on Orange Pi 3B..."
+          
+          # Install ROS Noetic
+          apt-get update
+          apt-get install -y curl gnupg2 lsb-release
+          curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros/ubuntu $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/ros.list > /dev/null
+          
+          apt-get update
+          apt-get install -y ros-noetic-ros-core ros-noetic-ros-base
+          
+          # Install additional packages
+          apt-get install -y python3-rosdep python3-rosinstall python3-rosinstall-generator python3-wstool build-essential
+          rosdep init
+          rosdep update
+          
+          # Setup catkin workspace
+          mkdir -p /home/orangepi/catkin_ws/src
+          cd /home/orangepi/catkin_ws/src
+          
+          # Copy Coptra packages
+          cp -r /home/orangepi/coptra .
+          cp -r /home/orangepi/coptra_blocks .
+          cp -r /home/orangepi/aruco_pose .
+          cp -r /home/orangepi/roswww_static .
+          
+          # Install dependencies
+          cd /home/orangepi/catkin_ws
+          rosdep install --from-paths src --ignore-src -r -y
+          
+          # Build workspace
+          source /opt/ros/noetic/setup.bash
+          catkin_make
+          
+          # Setup environment
+          echo "source /opt/ros/noetic/setup.bash" >> /home/orangepi/.bashrc
+          echo "source /home/orangepi/catkin_ws/devel/setup.bash" >> /home/orangepi/.bashrc
+          
+          # Setup systemd services
+          cp /opt/coptra/assets/coptra.service /etc/systemd/system/
+          cp /opt/coptra/assets/roscore.service /etc/systemd/system/
+          systemctl enable roscore
+          systemctl enable coptra
+          
+          # Setup camera
+          cp /opt/coptra/assets/hardware_setup.sh /usr/local/bin/
+          chmod +x /usr/local/bin/hardware_setup.sh
+          
+          # Setup network
+          cp /opt/coptra/assets/init_rpi.sh /usr/local/bin/
+          chmod +x /usr/local/bin/init_rpi.sh
+          
+          echo "Coptra installation completed!"
+          EOF
+          
+          sudo chmod +x /tmp/orangepi3b/root/opt/coptra/install.sh
+          
+          # Unmount
+          sudo umount /tmp/orangepi3b/boot
+          sudo umount /tmp/orangepi3b/root
+          sudo losetup -d "$LOOP_DEV"
+      
+      - name: Compress final image
+        run: |
+          cd debian-image-builder
+          IMAGE_FILE=$(ls output/images/*.img | head -1)
+          xz -9 "$IMAGE_FILE"
+          echo "Final image: ${IMAGE_FILE}.xz"
+      
+      - name: Upload Orange Pi 3B Coptra image
+        uses: softprops/action-gh-release@v1
+        if: ${{ github.event_name == 'release' }}
+        with:
+          files: debian-image-builder/output/images/*.img.xz
+          prerelease: false
+          body: |
+            ## Orange Pi 3B Coptra Image with Kernel 5.10
+            
+            ### Features:
+            - Debian Bookworm with kernel 5.10
+            - rkcif and rkisp support for OV5647 camera
+            - ROS Noetic for Orange Pi 3B
+            - WiFi Access Point mode (SSID: coptra-XXXX)
+            - Web interface for network configuration
+            - Butterfly terminal server
+            - Nginx web server
+            
+            ### Installation:
+            1. Download and extract the image
+            2. Flash to microSD card using balenaEtcher or similar
+            3. Insert SD card into Orange Pi 3B
+            4. Power on and connect to WiFi "coptra-XXXX" (password: coptrawifi)
+            5. Access web interface at http://192.168.11.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
