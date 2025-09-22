@@ -63,6 +63,19 @@ echo_stamp "Increase apt retries"
 
 echo "APT::Acquire::Retries \"3\";" > /etc/apt/apt.conf.d/80-retries
 
+echo_stamp "Free up space before package installation"
+# Clean up any existing packages to free space
+apt-get clean
+apt-get autoremove -y
+apt-get autoclean
+rm -rf /var/lib/apt/lists/*
+rm -rf /tmp/*
+rm -rf /var/tmp/*
+
+# Check available space
+echo_stamp "Available space before package installation:"
+df -h
+
 echo_stamp "Install apt keys & repos"
 
 # Update sources.list for Debian Bookworm
@@ -117,12 +130,6 @@ tmux \
 tree \
 vim \
 tcpdump \
-parted \
-e2fsprogs \
-util-linux \
-cloud-guest-utils \
-gdisk \
-qemu-utils \
 libpoco-dev \
 libzbar0 \
 python3-rosdep-modules \

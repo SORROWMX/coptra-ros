@@ -122,11 +122,13 @@ jobs:
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
           
           # Run build in Docker with proper volume mounts using goldarte/img-tool
-          # Use the expanded workspace for maximum space
+          # Use the expanded workspace for maximum space and pass environment variables
           docker run --privileged --rm \
             -v /dev:/dev \
             -v $(pwd):/mnt \
             -e TRAVIS_TAG="${{ github.event.release.tag_name }}" \
+            -e IMAGE_SIZE="20G" \
+            -e RESIZE_MODE="auto" \
             goldarte/img-tool:v0.5
           
           # Clean up temporary files
