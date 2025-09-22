@@ -50,7 +50,7 @@ fi
 
 # Setup QEMU for ARM64 emulation
 QEMU_BINARY=""
-for qemu_path in /usr/bin/qemu-aarch64-static /usr/bin/qemu-arm-static /usr/bin/qemu-aarch64 /usr/bin/qemu-arm; do
+for qemu_path in /usr/bin/qemu-aarch64-static /usr/bin/qemu-arm-static /usr/bin/qemu-aarch64 /usr/bin/qemu-arm /usr/bin/qemu-aarch64-static /usr/bin/qemu-arm-static; do
     if [ -f "$qemu_path" ]; then
         QEMU_BINARY="$qemu_path"
         echo_stamp "Found QEMU binary: $qemu_path"
@@ -58,11 +58,30 @@ for qemu_path in /usr/bin/qemu-aarch64-static /usr/bin/qemu-arm-static /usr/bin/
     fi
 done
 
+# Try to install QEMU if not found
+if [ -z "$QEMU_BINARY" ]; then
+    echo_stamp "QEMU binary not found, attempting to install..."
+    if command -v apt-get >/dev/null 2>&1; then
+        apt-get update -qq && apt-get install -y qemu-user-static binfmt-support
+        # Try again after installation
+        for qemu_path in /usr/bin/qemu-aarch64-static /usr/bin/qemu-arm-static /usr/bin/qemu-aarch64 /usr/bin/qemu-arm; do
+            if [ -f "$qemu_path" ]; then
+                QEMU_BINARY="$qemu_path"
+                echo_stamp "Found QEMU binary after installation: $qemu_path"
+                break
+            fi
+        done
+    fi
+fi
+
 if [ -n "$QEMU_BINARY" ]; then
+    # Ensure target directory exists
+    mkdir -p "$TEMP_DIR/usr/bin"
     cp "$QEMU_BINARY" "$TEMP_DIR/usr/bin/"
     echo_stamp "Copied QEMU binary to chroot"
 else
-    echo_stamp "Warning: No QEMU binary found for ARM emulation"
+    echo_stamp "Error: No QEMU binary found for ARM emulation - build will fail"
+    exit 1
 fi
 
 # Bind mount necessary directories

@@ -18,9 +18,14 @@ jobs:
         run: |
           chmod +x builder/*.sh
           chmod +x builder/assets/*.sh
+      - name: Setup QEMU for ARM emulation
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static binfmt-support
+          sudo docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
       - name: Build image
         run: |
-          docker run --privileged --rm -v /dev:/dev -v $(pwd):/builder/repo -e TRAVIS_TAG="${{ github.event.release.tag_name }}" sfalexrog/img-tool:qemu-update
+          docker run --privileged --rm -v /dev:/dev -v $(pwd):/builder/repo -e TRAVIS_TAG="${{ github.event.release.tag_name }}" --platform linux/amd64 sfalexrog/img-tool:qemu-update
       - name: Compress image
         run: |
           cd images && sudo chmod -R 777 . && zip -9 $(echo *_*).zip *_* && ls -l . && unzip -l *_*.zip
