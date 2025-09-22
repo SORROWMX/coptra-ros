@@ -84,7 +84,7 @@ get_image ${IMAGE_PATH} ${SOURCE_IMAGE}
 
 # Resize image to maximum 7GB using the container's built-in resize functionality
 echo_stamp "Resizing image to maximum 7GB"
-/builder/image-resize.sh ${IMAGE_PATH} max '7G'
+/builder/image-resize.sh ${IMAGE_PATH} max '10G'
 echo_stamp "Image resizing complete" "SUCCESS"
 
 /builder/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/init_rpi.sh' '/root/'

@@ -115,7 +115,7 @@ echo_stamp "Skip libgeographic-dev installation - using libgeographiclib-dev ins
 echo_stamp "Software installing"
 
 # Install packages in smaller groups to avoid running out of space
-echo_stamp "Installing basic packages"
+echo_stamp "Installing basic packages first"
 my_travis_retry apt-get install --no-install-recommends -y \
 unzip \
 zip \
@@ -132,10 +132,6 @@ vim \
 tcpdump \
 libpoco-dev \
 libzbar0 \
-python3-rosdep-modules \
-python3-rosinstall-generator \
-python3-wstool \
-python3-rosinstall \
 build-essential \
 libffi-dev \
 python3-pigpio \
@@ -151,27 +147,6 @@ python3-yaml \
 catkin-tools \
 libgeographic19 \
 libgeographic-dev \
-ros-noetic-ros-core \
-ros-noetic-ros-base \
-ros-noetic-ros-comm \
-ros-noetic-rosout \
-python3-roslaunch \
-ros-noetic-message-generation \
-ros-noetic-message-runtime \
-ros-noetic-std-msgs \
-ros-noetic-genmsg \
-ros-noetic-led-msgs \
-ros-noetic-image-transport \
-ros-noetic-tf \
-ros-noetic-cv-bridge \
-ros-noetic-geographic-msgs \
-ros-noetic-eigen-conversions \
-ros-noetic-mavros \
-libroscpp-core-dev \
-ros-noetic-rosbridge-server \
-ros-noetic-mavros-extras \
-ros-noetic-web-video-server \
-ros-noetic-tf2-web-republisher \
 python3-gi \
 python3-gi-cairo \
 gir1.2-gstreamer-1.0 \
@@ -190,6 +165,42 @@ avahi-daemon \
 avahi-utils \
 libnss-mdns \
 device-tree-compiler
+
+echo_stamp "Installing ROS dependencies"
+# Install python3-rosdistro first to resolve dependencies
+my_travis_retry apt-get install --no-install-recommends -y python3-rosdistro
+
+echo_stamp "Installing ROS packages"
+my_travis_retry apt-get install --no-install-recommends -y \
+python3-rosdep-modules \
+python3-rosinstall-generator \
+python3-wstool \
+python3-rosinstall \
+python3-roslaunch \
+ros-noetic-ros-core \
+ros-noetic-ros-base \
+ros-noetic-ros-comm \
+ros-noetic-rosout \
+ros-noetic-message-generation \
+ros-noetic-message-runtime \
+ros-noetic-std-msgs \
+ros-noetic-genmsg \
+ros-noetic-led-msgs \
+ros-noetic-image-transport \
+ros-noetic-tf \
+ros-noetic-cv-bridge \
+ros-noetic-geographic-msgs \
+ros-noetic-eigen-conversions \
+ros-noetic-mavros \
+libroscpp-core-dev \
+ros-noetic-rosbridge-server \
+ros-noetic-mavros-extras \
+ros-noetic-web-video-server \
+ros-noetic-tf2-web-republisher
+
+# Fix any broken packages
+echo_stamp "Fixing any broken packages"
+apt-get --fix-broken install -y || true
 
 # Clean up after package installation to free space
 echo_stamp "Cleaning up after package installation"
