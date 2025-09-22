@@ -173,18 +173,9 @@ get_image() {
 
 get_image ${IMAGE_PATH} ${SOURCE_IMAGE}
 
-# Resize the base image to ensure adequate space for package installation
-echo_stamp "Resizing base image to 20GB for package installation"
-if [ -d "/builder" ]; then
-    # Running in Docker - use img-resize command directly
-    img-resize ${IMAGE_PATH} max 15G
-else
-    # Running on VM - use Docker to run img-resize
-    docker run --privileged --rm \
-        -v /dev:/dev \
-        -v $(dirname ${IMAGE_PATH}):/mnt \
-        goldarte/img-tool:v0.5 img-resize /mnt/$(basename ${IMAGE_PATH}) max 15G
-fi
+# Note: Image resizing is now handled by the GitHub Actions workflow
+# using goldarte/img-tool after the build process completes
+# This ensures Docker is available in the runner environment
 
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/init_rpi.sh' '/root/'
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/hardware_setup.sh' '/root/'
