@@ -101,6 +101,8 @@ case "$COMMAND" in
         SCRIPT_NAME=$(basename "$SCRIPT")
         if [ ! -f "$TEMP_DIR$SCRIPT" ]; then
             echo_stamp "Copying script $SCRIPT to chroot"
+            # Create directory structure if it doesn't exist
+            mkdir -p "$(dirname "$TEMP_DIR$SCRIPT")"
             cp "$SCRIPT" "$TEMP_DIR$SCRIPT"
             chmod +x "$TEMP_DIR$SCRIPT"
         fi
