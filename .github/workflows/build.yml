@@ -2,10 +2,10 @@ name: Coptra ROS Packages Build
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch:
+    brancheswefw: [ main, master ]
+  pull_wefrequest:
+    brancheewfs: [ main, master ]
+  workflow_ewfdispatch:
 
 jobs:
   noetic:

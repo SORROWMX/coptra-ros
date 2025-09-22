@@ -23,13 +23,22 @@ jobs:
       
       - name: Build Orange Pi 3B Coptra image
         run: |
+          # Make scripts executable
+          chmod +x builder/image-build.sh
+          chmod +x builder/image-*.sh
+          chmod +x builder/assets/*.sh
+          
+          # Verify script permissions
+          ls -la builder/image-build.sh
+          
           # Use custom Docker image with ARM64 emulation for Orange Pi
           docker run --privileged --rm \
             -v /dev:/dev \
             -v $(pwd):/builder/repo \
             -e TRAVIS_TAG="${{ github.event.release.tag_name }}" \
             -e IMAGE_VERSION="${{ github.event.release.tag_name || 'dev' }}" \
-            sfalexrog/img-tool:qemu-update
+            sfalexrog/img-tool:qemu-update \
+            bash -c "cd /builder/repo && chmod +x builder/image-build.sh && ./builder/image-build.sh"
       
       - name: Compress image
         run: |
