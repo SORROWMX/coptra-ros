@@ -72,6 +72,10 @@ get_image() {
   if [ ! -e "${BUILD_DIR}/${RPI_ARCHIVE_NAME}" ]; then
     echo_stamp "Downloading original Linux distribution"
     # Update SSL certificates and try multiple download methods
+    # Fix Debian repositories (update from buster to bookworm)
+    sed -i 's/buster/bookworm/g' /etc/apt/sources.list
+    sed -i 's/buster/bookworm/g' /etc/apt/sources.list.d/*.list 2>/dev/null || true
+    
     apt-get update && apt-get install -y ca-certificates curl wget
     update-ca-certificates
     
@@ -109,16 +113,28 @@ get_image() {
   # Check file extension and extract accordingly
   if [[ ${RPI_ARCHIVE_NAME} == *.7z ]]; then
     echo_stamp "Extracting 7z archive"
-    # Install 7zip if not available
-    which 7z >/dev/null 2>&1 || (apt-get update && apt-get install -y p7zip-full)
+    # Install 7zip if not available (with updated repositories)
+    if ! which 7z >/dev/null 2>&1; then
+      echo_stamp "Installing p7zip-full"
+      # Fix repositories again before installing
+      sed -i 's/buster/bookworm/g' /etc/apt/sources.list
+      sed -i 's/buster/bookworm/g' /etc/apt/sources.list.d/*.list 2>/dev/null || true
+      apt-get update && apt-get install -y p7zip-full
+    fi
+    
+    echo_stamp "Extracting with 7z"
     7z x ${BUILD_DIR}/${RPI_ARCHIVE_NAME} -o${BUILD_DIR}/ -y
+    
     # Find the extracted .img file
     EXTRACTED_IMG=$(find ${BUILD_DIR}/ -name "*.img" -type f | head -1)
     if [ -n "$EXTRACTED_IMG" ]; then
+      echo_stamp "Found extracted image: $EXTRACTED_IMG"
       cp "$EXTRACTED_IMG" $1
       echo_stamp "7z extraction complete" "SUCCESS"
     else
       echo_stamp "No .img file found in 7z archive!" "ERROR"
+      echo_stamp "Contents of archive:"
+      ls -la ${BUILD_DIR}/
       exit 1
     fi
   elif [[ ${RPI_ARCHIVE_NAME} == *.zip ]]; then

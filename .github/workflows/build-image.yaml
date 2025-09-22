@@ -45,7 +45,17 @@ jobs:
             -e DEBIAN_FRONTEND=noninteractive \
             -e TZ=UTC \
             sfalexrog/img-tool:qemu-update \
-            bash -c "cd /builder/repo && chmod +x builder/image-build.sh && ./builder/image-build.sh"
+            bash -c "
+              # Fix Debian repositories in Docker container
+              sed -i 's/buster/bookworm/g' /etc/apt/sources.list
+              sed -i 's/buster/bookworm/g' /etc/apt/sources.list.d/*.list 2>/dev/null || true
+              
+              # Update package lists
+              apt-get update
+              
+              # Navigate to repo and run build script
+              cd /builder/repo && chmod +x builder/image-build.sh && ./builder/image-build.sh
+            "
       
       - name: Compress image
         run: |
