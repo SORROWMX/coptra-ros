@@ -191,6 +191,11 @@ my_travis_retry apt-get install --no-install-recommends -y python3-rosdistro-mod
     apt-get --fix-broken install -y || true
 }
 
+# Install python3-rosdistro with force overwrite to satisfy dependencies
+echo_stamp "Installing python3-rosdistro with force overwrite"
+dpkg -i --force-overwrite /var/cache/apt/archives/python3-rosdistro*.deb || true
+apt-get --fix-broken install -y || true
+
 echo_stamp "Installing ROS packages"
 # Try standard installation first
 my_travis_retry apt-get install --no-install-recommends -y \
@@ -221,7 +226,7 @@ ros-noetic-web-video-server \
 ros-noetic-tf2-web-republisher || {
     echo_stamp "Standard ROS installation failed, trying force overwrite method"
     # If standard installation fails, try force overwrite for problematic packages
-    for pkg in python3-rosdep-modules python3-rosdistro-modules; do
+    for pkg in python3-rosdep-modules python3-rosdistro-modules python3-rosdistro; do
         if dpkg -l | grep -q "^ii.*$pkg"; then
             echo_stamp "Package $pkg already installed"
         else
@@ -236,6 +241,24 @@ ros-noetic-tf2-web-republisher || {
 # Fix any broken packages
 echo_stamp "Fixing any broken packages"
 apt-get --fix-broken install -y || true
+
+# If we still have dependency issues, try to install missing packages individually
+echo_stamp "Checking for remaining dependency issues"
+if apt list --broken 2>/dev/null | grep -q "broken\|python3-rosinstall\|python3-rosinstall-generator"; then
+    echo_stamp "Found dependency issues, attempting individual package installation"
+    
+    # Try to install problematic packages individually with force overwrite
+    for pkg in python3-rosinstall python3-rosinstall-generator; do
+        echo_stamp "Attempting to install $pkg individually"
+        apt-get install --no-install-recommends -y $pkg || {
+            echo_stamp "Standard install failed for $pkg, trying force overwrite"
+            dpkg -i --force-overwrite /var/cache/apt/archives/${pkg}*.deb || true
+        }
+    done
+    
+    # Final attempt to fix dependencies
+    apt-get --fix-broken install -y || true
+fi
 
 # Additional cleanup based on Ask Ubuntu solutions
 echo_stamp "Performing additional cleanup"
