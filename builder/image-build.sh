@@ -106,20 +106,31 @@ get_image() {
   if [ ! -e "${BUILD_DIR}/${RPI_ARCHIVE_NAME}" ]; then
     echo_stamp "Downloading original Linux distribution"
     
+    # Check available disk space before download
+    available_space=$(df ${BUILD_DIR} | tail -1 | awk '{print $4}')
+    required_space=$((2 * 1024 * 1024))  # 2GB in KB
+    echo_stamp "Available space: $((available_space / 1024 / 1024))GB, Required: 2GB"
+    
+    if [ $available_space -lt $required_space ]; then
+      echo_stamp "Insufficient disk space for download!" "ERROR"
+      echo_stamp "Available: $((available_space / 1024 / 1024))GB, Required: 2GB" "ERROR"
+      exit 1
+    fi
+    
     # Try multiple URLs and methods
     DOWNLOAD_SUCCESS=false
     for url in "${ALTERNATIVE_URLS[@]}"; do
       echo_stamp "Trying URL: $url"
       
-      # Try wget with SSL options
-      if wget --progress=dot:giga --no-check-certificate --timeout=30 --tries=3 -O ${BUILD_DIR}/${RPI_ARCHIVE_NAME} "$url"; then
+      # Try wget with SSL options and resume capability
+      if wget --progress=dot:giga --no-check-certificate --timeout=30 --tries=3 --continue -O ${BUILD_DIR}/${RPI_ARCHIVE_NAME} "$url"; then
         DOWNLOAD_SUCCESS=true
         break
       fi
       
       echo_stamp "wget failed for $url, trying curl"
-      # Fallback to curl
-      if curl -L --insecure --connect-timeout 30 --max-time 300 -o ${BUILD_DIR}/${RPI_ARCHIVE_NAME} "$url"; then
+      # Fallback to curl with resume capability
+      if curl -L --insecure --connect-timeout 30 --max-time 300 -C - -o ${BUILD_DIR}/${RPI_ARCHIVE_NAME} "$url"; then
         DOWNLOAD_SUCCESS=true
         break
       fi
@@ -133,6 +144,11 @@ get_image() {
     fi
     
     echo_stamp "Downloading complete" "SUCCESS"
+    
+    # Clean up any partial downloads
+    if [ -f "${BUILD_DIR}/${RPI_ARCHIVE_NAME}.tmp" ]; then
+      rm -f "${BUILD_DIR}/${RPI_ARCHIVE_NAME}.tmp"
+    fi
   else 
     echo_stamp "Archive already downloaded: ${BUILD_DIR}/${RPI_ARCHIVE_NAME}"
   fi
@@ -144,6 +160,11 @@ get_image() {
     echo_stamp "Extracting zip archive"
     unzip -p ${BUILD_DIR}/${RPI_ARCHIVE_NAME} ${RPI_IMAGE_NAME} > $1
     echo_stamp "Zip extraction complete" "SUCCESS"
+    
+    # Clean up the archive to free space
+    echo_stamp "Cleaning up archive to free disk space"
+    rm -f ${BUILD_DIR}/${RPI_ARCHIVE_NAME}
+    echo_stamp "Archive cleaned up" "SUCCESS"
   else
     echo_stamp "Unsupported archive format: ${RPI_ARCHIVE_NAME}" "ERROR"
     exit 1
@@ -152,18 +173,9 @@ get_image() {
 
 get_image ${IMAGE_PATH} ${SOURCE_IMAGE}
 
-# Resize image using goldarte/img-tool Docker image
-echo_stamp "Resizing image using goldarte/img-tool"
-if [ -d "/builder" ]; then
-    # Running in Docker - use img-resize command directly
-    img-resize ${IMAGE_PATH} max 7G
-else
-    # Running on VM - use Docker to run img-resize
-    docker run --privileged --rm \
-        -v /dev:/dev \
-        -v $(dirname ${IMAGE_PATH}):/mnt \
-        goldarte/img-tool:v0.5 img-resize /mnt/$(basename ${IMAGE_PATH}) max 7G
-fi
+# Note: Image resizing is now handled by the GitHub Actions workflow
+# using goldarte/img-tool after the build process completes
+# This ensures Docker is available in the runner environment
 
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/init_rpi.sh' '/root/'
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/hardware_setup.sh' '/root/'

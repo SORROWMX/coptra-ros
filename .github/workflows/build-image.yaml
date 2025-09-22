@@ -14,6 +14,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Maximize build disk space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 1024
+          swap-size-mb: 2048
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-swift: 'true'
+          
+      - name: Clean up system to free space
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h
+          
+          # Clean up package cache
+          sudo apt-get clean
+          sudo apt-get autoremove -y
+          sudo apt-get autoclean
+          
+          # Clean up Docker
+          docker system prune -af --volumes || true
+          
+          # Clean up temporary files
+          sudo rm -rf /tmp/*
+          sudo rm -rf /var/tmp/*
+          
+          # Clean up logs
+          sudo journalctl --vacuum-time=1d || true
+          
+          echo "=== Disk space after cleanup ==="
+          df -h
+          
       - name: Build Orange Pi 3B Coptra image
         run: |
           # Install required packages for image manipulation
@@ -43,8 +77,68 @@ jobs:
           
           # Clean up temporary files
           rm -rf /tmp/docker-builder
-      - name: Compress Orange Pi image
+          
+          # Clean up Docker images to free space
+          echo "=== Cleaning up Docker images ==="
+          docker system prune -af --volumes || true
+          df -h
+          
+      - name: Optimize and resize Orange Pi image
         run: |
+          # Find the built image file
+          if [ -d "images" ] && [ "$(ls -A images/*.img 2>/dev/null)" ]; then
+            echo "Found image files:"
+            ls -lh images/*.img
+            
+            for img_file in images/*.img; do
+              if [ -f "$img_file" ]; then
+                echo "Processing image: $img_file"
+                
+                # Get current size
+                current_size=$(stat -c%s "$img_file")
+                current_size_gb=$((current_size / 1024 / 1024 / 1024))
+                echo "Current size: ${current_size_gb}GB"
+                
+                # Single resize operation: optimize and expand to 7GB free space
+                echo "Optimizing and resizing image to 7GB free space..."
+                docker run --privileged --rm \
+                  -v /dev:/dev \
+                  -v $(pwd)/images:/mnt \
+                  goldarte/img-tool:v0.5 img-resize /mnt/$(basename "$img_file") max 7G
+                
+                # Verify the resize
+                new_size=$(stat -c%s "$img_file")
+                new_size_gb=$((new_size / 1024 / 1024 / 1024))
+                echo "Final size: ${new_size_gb}GB"
+                echo "Space available for packages: 7GB"
+                
+                # Show final image info
+                echo "Final image information:"
+                ls -lh "$img_file"
+                file "$img_file"
+              fi
+            done
+          else
+            echo "No image files found in images directory"
+            ls -la images/ || echo "Images directory does not exist"
+          fi
+          
+      - name: Final cleanup and compress Orange Pi image
+        run: |
+          echo "=== Final disk space check ==="
+          df -h
+          
+          # Clean up any remaining temporary files
+          sudo rm -rf /tmp/*
+          sudo rm -rf /var/tmp/*
+          
+          # Clean up Docker one more time
+          docker system prune -af --volumes || true
+          
+          echo "=== Disk space after final cleanup ==="
+          df -h
+          
+          # Compress the image
           cd images && sudo chmod -R 777 . && zip -9 $(echo *_*).zip *_* && ls -l . && unzip -l *_*.zip
       - name: Upload Orange Pi image
         uses: softprops/action-gh-release@v1
@@ -62,6 +156,7 @@ jobs:
             - Web interface for network configuration
             - Butterfly terminal server
             - Nginx web server
+            - **7GB free space** for additional package installation
             
             ### Installation:
             1. Download and extract the image
@@ -69,5 +164,12 @@ jobs:
             3. Insert SD card into Orange Pi 3B
             4. Power on and connect to WiFi "coptra-XXXX" (password: coptrawifi)
             5. Access web interface at http://192.168.11.1
+            
+            ### Package Installation:
+            You can now install additional packages via:
+            ```bash
+            sudo apt update
+            sudo apt install -y <your-packages>
+            ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
