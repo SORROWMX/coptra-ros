@@ -16,12 +16,12 @@
 set -e # Exit immidiately on non-zero result
 
 # Orange Pi 3B Debian Bookworm image with ROS Noetic
-SOURCE_IMAGE="https://github.com/SORROWMX/orangepi3b-ros-noetic/releases/download/debian/Orangepi3b_1.0.8_debian_bookworm_server_linux5.10.160.7z"
+SOURCE_IMAGE="https://github.com/SORROWMX/orangepi3b-ros-noetic/releases/download/debian/Orangepi3b_1.0.8_debian_bookworm_server_linux5.10.160.zip"
 
 # Alternative download URLs (fallback)
 ALTERNATIVE_URLS=(
-  "https://github.com/SORROWMX/orangepi3b-ros-noetic/releases/download/debian/Orangepi3b_1.0.8_debian_bookworm_server_linux5.10.160.7z"
-  "https://github.com/SORROWMX/orangepi3b-ros-noetic/releases/latest/download/Orangepi3b_1.0.8_debian_bookworm_server_linux5.10.160.7z"
+  "https://github.com/SORROWMX/orangepi3b-ros-noetic/releases/download/debian/Orangepi3b_1.0.8_debian_bookworm_server_linux5.10.160.zip"
+  "https://github.com/SORROWMX/orangepi3b-ros-noetic/releases/latest/download/Orangepi3b_1.0.8_debian_bookworm_server_linux5.10.160.zip"
 )
 
 export DEBIAN_FRONTEND=${DEBIAN_FRONTEND:='noninteractive'}
@@ -67,17 +67,10 @@ get_image() {
   # TEMPLATE: get_image <IMAGE_PATH> <RPI_DONWLOAD_URL>
   local BUILD_DIR=$(dirname $1)
   local RPI_ARCHIVE_NAME=$(basename $2)
-  local RPI_IMAGE_NAME=$(echo ${RPI_ARCHIVE_NAME} | sed 's/\.7z$/.img/' | sed 's/\.zip$/.img/')
+  local RPI_IMAGE_NAME=$(echo ${RPI_ARCHIVE_NAME} | sed 's/\.zip$/.img/')
 
   if [ ! -e "${BUILD_DIR}/${RPI_ARCHIVE_NAME}" ]; then
     echo_stamp "Downloading original Linux distribution"
-    # Update SSL certificates and try multiple download methods
-    # Fix Debian repositories (update from buster to bookworm)
-    sed -i 's/buster/bookworm/g' /etc/apt/sources.list
-    sed -i 's/buster/bookworm/g' /etc/apt/sources.list.d/*.list 2>/dev/null || true
-    
-    apt-get update && apt-get install -y ca-certificates curl wget
-    update-ca-certificates
     
     # Try multiple URLs and methods
     DOWNLOAD_SUCCESS=false
@@ -110,34 +103,8 @@ get_image() {
 
   echo_stamp "Extracting Linux distribution image"
   
-  # Check file extension and extract accordingly
-  if [[ ${RPI_ARCHIVE_NAME} == *.7z ]]; then
-    echo_stamp "Extracting 7z archive"
-    # Install 7zip if not available (with updated repositories)
-    if ! which 7z >/dev/null 2>&1; then
-      echo_stamp "Installing p7zip-full"
-      # Fix repositories again before installing
-      sed -i 's/buster/bookworm/g' /etc/apt/sources.list
-      sed -i 's/buster/bookworm/g' /etc/apt/sources.list.d/*.list 2>/dev/null || true
-      apt-get update && apt-get install -y p7zip-full
-    fi
-    
-    echo_stamp "Extracting with 7z"
-    7z x ${BUILD_DIR}/${RPI_ARCHIVE_NAME} -o${BUILD_DIR}/ -y
-    
-    # Find the extracted .img file
-    EXTRACTED_IMG=$(find ${BUILD_DIR}/ -name "*.img" -type f | head -1)
-    if [ -n "$EXTRACTED_IMG" ]; then
-      echo_stamp "Found extracted image: $EXTRACTED_IMG"
-      cp "$EXTRACTED_IMG" $1
-      echo_stamp "7z extraction complete" "SUCCESS"
-    else
-      echo_stamp "No .img file found in 7z archive!" "ERROR"
-      echo_stamp "Contents of archive:"
-      ls -la ${BUILD_DIR}/
-      exit 1
-    fi
-  elif [[ ${RPI_ARCHIVE_NAME} == *.zip ]]; then
+  # Extract ZIP archive
+  if [[ ${RPI_ARCHIVE_NAME} == *.zip ]]; then
     echo_stamp "Extracting zip archive"
     unzip -p ${BUILD_DIR}/${RPI_ARCHIVE_NAME} ${RPI_IMAGE_NAME} > $1
     echo_stamp "Zip extraction complete" "SUCCESS"
