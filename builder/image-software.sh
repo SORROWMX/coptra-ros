@@ -182,63 +182,113 @@ apt-get autoremove -y
 echo_stamp "Cleaning up broken packages"
 apt-get --fix-broken install -y || true
 
-# Install only python3-rosdistro-modules (the correct package for Debian/Ubuntu)
-echo_stamp "Installing python3-rosdistro-modules (correct package for Debian/Ubuntu)"
-# First try to install from sorrowmx repository
-apt-get install --no-install-recommends -y python3-rosdistro-modules=0.9.0-1 || {
-    echo_stamp "Failed to install specific version, trying force overwrite"
-    dpkg -i --force-overwrite /var/cache/apt/archives/python3-rosdistro-modules_0.9.0-1_all.deb || true
-    apt-get --fix-broken install -y || true
+# Download and install packages directly from official ROS repository
+echo_stamp "Downloading ROS distro packages from official repository"
+# Download python3-rosdistro-modules
+wget -O /tmp/python3-rosdistro-modules_0.9.0-1_all.deb \
+    "http://packages.ros.org/ros/ubuntu/pool/main/p/python3-rosdistro-modules/python3-rosdistro-modules_0.9.0-1_all.deb" || {
+    echo_stamp "Failed to download python3-rosdistro-modules from official repo"
 }
 
-# Hold the package to prevent version changes
-echo_stamp "Holding python3-rosdistro-modules to prevent version conflicts"
-apt-mark hold python3-rosdistro-modules
+# Download python3-rosdistro
+wget -O /tmp/python3-rosdistro_0.9.0-100_all.deb \
+    "http://packages.ros.org/ros/ubuntu/pool/main/p/python3-rosdistro/python3-rosdistro_0.9.0-100_all.deb" || {
+    echo_stamp "Failed to download python3-rosdistro from official repo"
+}
 
-# Create apt preferences to pin specific versions and exclude conflicting packages
+# Download python3-rosdep-modules
+wget -O /tmp/python3-rosdep-modules_0.23.1-1_all.deb \
+    "http://packages.ros.org/ros/ubuntu/pool/main/p/python3-rosdep-modules/python3-rosdep-modules_0.23.1-1_all.deb" || {
+    echo_stamp "Failed to download python3-rosdep-modules from official repo"
+}
+
+# Download python3-rosdep
+wget -O /tmp/python3-rosdep_0.23.1-1_all.deb \
+    "http://packages.ros.org/ros/ubuntu/pool/main/p/python3-rosdep/python3-rosdep_0.23.1-1_all.deb" || {
+    echo_stamp "Failed to download python3-rosdep from official repo"
+}
+
+# Install the downloaded packages in correct order
+echo_stamp "Installing downloaded ROS distro packages"
+# First install python3-rosdistro-modules (main package)
+if [ -f /tmp/python3-rosdistro-modules_0.9.0-1_all.deb ]; then
+    dpkg -i /tmp/python3-rosdistro-modules_0.9.0-1_all.deb || {
+        echo_stamp "Failed to install python3-rosdistro-modules, trying force overwrite"
+        dpkg -i --force-overwrite /tmp/python3-rosdistro-modules_0.9.0-1_all.deb || true
+    }
+fi
+
+# Then install python3-rosdistro (meta-package)
+if [ -f /tmp/python3-rosdistro_0.9.0-100_all.deb ]; then
+    dpkg -i /tmp/python3-rosdistro_0.9.0-100_all.deb || {
+        echo_stamp "Failed to install python3-rosdistro, trying force overwrite"
+        dpkg -i --force-overwrite /tmp/python3-rosdistro_0.9.0-100_all.deb || true
+    }
+fi
+
+# Then install python3-rosdep-modules (main rosdep package)
+if [ -f /tmp/python3-rosdep-modules_0.23.1-1_all.deb ]; then
+    dpkg -i /tmp/python3-rosdep-modules_0.23.1-1_all.deb || {
+        echo_stamp "Failed to install python3-rosdep-modules, trying force overwrite"
+        dpkg -i --force-overwrite /tmp/python3-rosdep-modules_0.23.1-1_all.deb || true
+    }
+fi
+
+# Finally install python3-rosdep (rosdep meta-package)
+if [ -f /tmp/python3-rosdep_0.23.1-1_all.deb ]; then
+    dpkg -i /tmp/python3-rosdep_0.23.1-1_all.deb || {
+        echo_stamp "Failed to install python3-rosdep, trying force overwrite"
+        dpkg -i --force-overwrite /tmp/python3-rosdep_0.23.1-1_all.deb || true
+    }
+fi
+
+# Clean up downloaded files
+rm -f /tmp/python3-rosdistro-modules_0.9.0-1_all.deb
+rm -f /tmp/python3-rosdistro_0.9.0-100_all.deb
+rm -f /tmp/python3-rosdep-modules_0.23.1-1_all.deb
+rm -f /tmp/python3-rosdep_0.23.1-1_all.deb
+
+# Fix any broken dependencies
+apt-get --fix-broken install -y || true
+
+# Hold all ROS packages to prevent version changes
+echo_stamp "Holding ROS packages to prevent version conflicts"
+apt-mark hold python3-rosdistro-modules
+apt-mark hold python3-rosdistro
+apt-mark hold python3-rosdep-modules
+apt-mark hold python3-rosdep
+
+# Create apt preferences to pin specific versions from official ROS repo
 echo_stamp "Creating apt preferences to pin ROS package versions"
 cat > /etc/apt/preferences.d/ros-package-pinning << 'EOF'
 Package: python3-rosdistro-modules
 Pin: version 0.9.0-1
 Pin-Priority: 1001
 
-# Exclude python3-rosdistro to prevent conflicts
 Package: python3-rosdistro
-Pin: release *
-Pin-Priority: -1
+Pin: version 0.9.0-100
+Pin-Priority: 1001
+
+Package: python3-rosdep-modules
+Pin: version 0.23.1-1
+Pin-Priority: 1001
+
+Package: python3-rosdep
+Pin: version 0.23.1-1
+Pin-Priority: 1001
+
+# Prevent installation from other sources
+Package: python3-rosdistro-modules
+Pin: origin packages.ros.org
+Pin-Priority: 1001
+
+Package: python3-rosdep-modules
+Pin: origin packages.ros.org
+Pin-Priority: 1001
 EOF
 
-# Create a fake python3-rosdistro package to satisfy dependencies
-echo_stamp "Creating fake python3-rosdistro package to satisfy dependencies"
-
-# Install equivs if not already installed
-apt-get install -y equivs || true
-
-# Create a virtual package that provides python3-rosdistro
-cat > /tmp/python3-rosdistro-virtual << 'EOF'
-Package: python3-rosdistro-virtual
-Version: 0.9.0-1
-Architecture: all
-Maintainer: Auto-generated
-Description: Virtual python3-rosdistro package
- This is a virtual package that provides python3-rosdistro functionality
- through python3-rosdistro-modules to avoid file conflicts.
-Provides: python3-rosdistro
-Conflicts: python3-rosdistro
-EOF
-
-# Build and install the virtual package
-cd /tmp
-equivs-build python3-rosdistro-virtual > /dev/null 2>&1 || true
-if [ -f python3-rosdistro-virtual_0.9.0-1_all.deb ]; then
-    dpkg -i python3-rosdistro-virtual_0.9.0-1_all.deb || true
-    rm -f python3-rosdistro-virtual_0.9.0-1_all.deb
-fi
-rm -f python3-rosdistro-virtual
-
-# Now install rosdep-modules which should work with the fake package
-echo_stamp "Installing python3-rosdep-modules"
-my_travis_retry apt-get install --no-install-recommends -y python3-rosdep-modules
+# ROS distro and rosdep packages are now installed directly from official repo
+echo_stamp "ROS distro and rosdep packages installed from official repository"
 
 echo_stamp "Installing ROS packages"
 # Try standard installation first (excluding already installed packages)
@@ -303,20 +353,31 @@ fi
 
 # Check specific package versions
 echo_stamp "Checking ROS package versions:"
-dpkg -l | grep -E "(python3-rosdistro-modules|python3-rosdep-modules)" || echo_stamp "No ROS distro packages found"
+dpkg -l | grep -E "(python3-rosdistro|python3-rosdistro-modules|python3-rosdep|python3-rosdep-modules)" || echo_stamp "No ROS distro packages found"
 
-# Verify that python3-rosdistro is NOT installed (should be excluded)
-if dpkg -l | grep -q "^ii.*python3-rosdistro[^-]"; then
-    echo_stamp "WARNING: python3-rosdistro is installed, this may cause conflicts" ERROR
+# Verify that all packages are installed correctly
+if dpkg -l | grep -q "^ii.*python3-rosdistro-modules.*0.9.0-1"; then
+    echo_stamp "python3-rosdistro-modules 0.9.0-1 is installed" SUCCESS
 else
-    echo_stamp "Good: python3-rosdistro is not installed, using python3-rosdistro-modules instead" SUCCESS
+    echo_stamp "WARNING: python3-rosdistro-modules is not installed or wrong version" ERROR
 fi
 
-# Check if virtual package is providing python3-rosdistro
-if dpkg -l | grep -q "^ii.*python3-rosdistro-virtual"; then
-    echo_stamp "Virtual python3-rosdistro package is installed" SUCCESS
+if dpkg -l | grep -q "^ii.*python3-rosdistro.*0.9.0-100"; then
+    echo_stamp "python3-rosdistro 0.9.0-100 is installed" SUCCESS
 else
-    echo_stamp "WARNING: Virtual python3-rosdistro package is not installed" ERROR
+    echo_stamp "WARNING: python3-rosdistro is not installed or wrong version" ERROR
+fi
+
+if dpkg -l | grep -q "^ii.*python3-rosdep-modules.*0.23.1-1"; then
+    echo_stamp "python3-rosdep-modules 0.23.1-1 is installed" SUCCESS
+else
+    echo_stamp "WARNING: python3-rosdep-modules is not installed or wrong version" ERROR
+fi
+
+if dpkg -l | grep -q "^ii.*python3-rosdep.*0.23.1-1"; then
+    echo_stamp "python3-rosdep 0.23.1-1 is installed" SUCCESS
+else
+    echo_stamp "WARNING: python3-rosdep is not installed or wrong version" ERROR
 fi
 
 # Check for any remaining broken packages
