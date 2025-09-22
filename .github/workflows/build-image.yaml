@@ -19,7 +19,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y qemu-user-static binfmt-support unzip ca-certificates curl wget
-          sudo docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          # Use modern binfmt setup
+          sudo docker run --privileged --rm tonistiigi/binfmt --install all
       
       - name: Build Orange Pi 3B Coptra image
         run: |
@@ -36,7 +37,7 @@ jobs:
           echo "=== Script content check ==="
           head -20 builder/image-build.sh
           
-          # Use custom Docker image with ARM64 emulation for Orange Pi
+          # Use Ubuntu 22.04 with proper ARM64 emulation
           docker run --privileged --rm \
             -v /dev:/dev \
             -v $(pwd):/builder/repo \
@@ -44,25 +45,22 @@ jobs:
             -e IMAGE_VERSION="${{ github.event.release.tag_name || 'dev' }}" \
             -e DEBIAN_FRONTEND=noninteractive \
             -e TZ=UTC \
-            sfalexrog/img-tool:qemu-update \
+            ubuntu:22.04 \
             bash -c "
-              # Install QEMU for ARM64 emulation and Git
-              apt-get update && apt-get install -y qemu-user-static binfmt-support git
-              
-              # Check QEMU installation
-              echo 'QEMU binaries:'
-              ls -la /usr/bin/qemu-*
+              # Install required packages
+              apt-get update && apt-get install -y \
+                qemu-user-static binfmt-support \
+                unzip wget curl ca-certificates \
+                kpartx parted dosfstools \
+                git build-essential \
+                python3 python3-pip
               
               # Setup QEMU for ARM64
               update-binfmts --enable qemu-arm
               update-binfmts --enable qemu-aarch64
               
-              # Copy QEMU binaries to chroot locations
+              # Copy QEMU binaries
               cp /usr/bin/qemu-arm-static /usr/bin/qemu-aarch64-static 2>/dev/null || true
-              
-              # Verify QEMU setup
-              echo 'QEMU setup verification:'
-              binfmt-support --status
               
               # Fix Git security issue
               git config --global --add safe.directory /builder/repo

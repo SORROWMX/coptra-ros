@@ -41,7 +41,8 @@ jobs:
                 qemu-user-static binfmt-support \
                 unzip wget curl ca-certificates \
                 kpartx parted dosfstools \
-                git build-essential
+                git build-essential \
+                python3 python3-pip
               
               # Setup QEMU for ARM64
               update-binfmts --enable qemu-arm
