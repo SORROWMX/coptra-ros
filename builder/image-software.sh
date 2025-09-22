@@ -86,6 +86,11 @@ echo "deb [arch=arm64 signed-by=/etc/apt/keyrings/orangepi-ros-noetic.gpg] https
 
 echo_stamp "Update apt cache"
 
+# Clean up any existing packages to free space
+apt-get clean
+apt-get autoremove -y
+apt-get autoclean
+
 # TODO: FIX ERROR: /usr/bin/apt-key: 596: /usr/bin/apt-key: cannot create /dev/null: Permission denied
 apt-get update
 # && apt upgrade -y
@@ -95,6 +100,9 @@ echo_stamp "Skip libgeographic-dev installation - using libgeographiclib-dev ins
 # We'll use libgeographiclib-dev from Debian repositories instead
 # Let's retry fetching those packages several times, just in case
 echo_stamp "Software installing"
+
+# Install packages in smaller groups to avoid running out of space
+echo_stamp "Installing basic packages"
 my_travis_retry apt-get install --no-install-recommends -y \
 unzip \
 zip \
@@ -170,7 +178,11 @@ avahi-utils \
 libnss-mdns \
 device-tree-compiler
 
-
+# Clean up after package installation to free space
+echo_stamp "Cleaning up after package installation"
+apt-get clean
+apt-get autoremove -y
+apt-get autoclean
 
 # Deny byobu to check available updates
 sed -i "s/updates_available//" /usr/share/byobu/status/status
@@ -525,5 +537,14 @@ gpgconf --kill dirmngr
 # dirmngr is only used by apt-key, so we can safely kill it.
 # We ignore pkill's exit value as well.
 pkill -9 -f dirmngr || true
+
+echo_stamp "Cleaning up to free space"
+# Clean up package cache and temporary files
+apt-get clean
+apt-get autoremove -y
+apt-get autoclean
+rm -rf /var/lib/apt/lists/*
+rm -rf /tmp/*
+rm -rf /var/tmp/*
 
 echo_stamp "End of software installation"

@@ -151,7 +151,7 @@ get_image() {
 }
 
 get_image ${IMAGE_PATH} ${SOURCE_IMAGE}
-
+${BUILDER_DIR}/image-resize.sh ${IMAGE_PATH} max '7G'
 
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/init_rpi.sh' '/root/'
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/hardware_setup.sh' '/root/'
@@ -195,4 +195,3 @@ ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/launch.
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec "${BUILDER_DIR}/image-ros.sh" ${REPO_URL} ${IMAGE_VERSION} false false ${NUMBER_THREADS}
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec "${BUILDER_DIR}/image-validate.sh"
 
-${BUILDER_DIR}/image-resize.sh ${IMAGE_PATH}
