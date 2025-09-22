@@ -19,11 +19,6 @@ set -e # Exit immidiately on non-zero result
 # Orange Pi 3B Debian Bookworm image with ROS Noetic
 SOURCE_IMAGE="https://github.com/SORROWMX/orangepi3b-ros-noetic/releases/download/debian/Orangepi3b_1.0.8_debian_bookworm_server_linux5.10.160.zip"
 
-# Alternative download URLs (fallback)
-ALTERNATIVE_URLS=(
-  "https://github.com/SORROWMX/orangepi3b-ros-noetic/releases/download/debian/Orangepi3b_1.0.8_debian_bookworm_server_linux5.10.160.zip"
-  "https://github.com/SORROWMX/orangepi3b-ros-noetic/releases/latest/download/Orangepi3b_1.0.8_debian_bookworm_server_linux5.10.160.zip"
-)
 
 export DEBIAN_FRONTEND=${DEBIAN_FRONTEND:='noninteractive'}
 export LANG=${LANG:='C.UTF-8'}
