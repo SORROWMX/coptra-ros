@@ -18,7 +18,7 @@ jobs:
       - name: Setup build environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-user-static binfmt-support p7zip-full
+          sudo apt-get install -y qemu-user-static binfmt-support p7zip-full ca-certificates curl wget
           sudo docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
       
       - name: Build Orange Pi 3B Coptra image
@@ -42,6 +42,8 @@ jobs:
             -v $(pwd):/builder/repo \
             -e TRAVIS_TAG="${{ github.event.release.tag_name }}" \
             -e IMAGE_VERSION="${{ github.event.release.tag_name || 'dev' }}" \
+            -e DEBIAN_FRONTEND=noninteractive \
+            -e TZ=UTC \
             sfalexrog/img-tool:qemu-update \
             bash -c "cd /builder/repo && chmod +x builder/image-build.sh && ./builder/image-build.sh"
       

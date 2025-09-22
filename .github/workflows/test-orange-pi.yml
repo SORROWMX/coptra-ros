@@ -4,9 +4,9 @@ on:
   push:
     branches: [ main, master ]
   pull_request:
-    branches: [ main, master ]
-  workflow_dispatch:
-
+    branches:ewf [ main, master ]
+  workflow_dwefispatch:
+ewf
 jobs:
   test-orange-pi:
     runs-on: ubuntu-latest
@@ -23,11 +23,13 @@ jobs:
         run: |
           # Test basic Orange Pi 3B functionality
           docker run --rm --platform linux/arm64 \
+            -e DEBIAN_FRONTEND=noninteractive \
+            -e TZ=UTC \
             -v $(pwd):/workspace \
             arm64v8/ubuntu:20.04 \
             bash -c "
               apt-get update && 
-              apt-get install -y python3 python3-pip curl wget &&
+              apt-get install -y python3 python3-pip curl wget tzdata &&
               python3 --version &&
               echo 'Orange Pi 3B ARM64 emulation test passed'
             "
@@ -36,11 +38,13 @@ jobs:
         run: |
           # Test ROS Noetic installation on ARM64
           docker run --rm --platform linux/arm64 \
+            -e DEBIAN_FRONTEND=noninteractive \
+            -e TZ=UTC \
             -v $(pwd):/workspace \
             ros:noetic-ros-base \
             bash -c "
               apt-get update && 
-              apt-get install -y python3-catkin-tools &&
+              apt-get install -y python3-catkin-tools tzdata &&
               source /opt/ros/noetic/setup.bash &&
               roscore --help &&
               echo 'ROS Noetic ARM64 test passed'
@@ -50,11 +54,13 @@ jobs:
         run: |
           # Test Orange Pi specific package installation
           docker run --rm --platform linux/arm64 \
+            -e DEBIAN_FRONTEND=noninteractive \
+            -e TZ=UTC \
             -v $(pwd):/workspace \
             arm64v8/ubuntu:20.04 \
             bash -c "
               apt-get update && 
-              apt-get install -y python3-pigpio python3-opencv nginx &&
+              apt-get install -y python3-pigpio python3-opencv nginx tzdata &&
               python3 -c 'import pigpio; print(\"pigpio import successful\")' &&
               python3 -c 'import cv2; print(\"OpenCV import successful\")' &&
               nginx -v &&

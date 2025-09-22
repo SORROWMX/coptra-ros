@@ -22,6 +22,8 @@ jobs:
     
     - name: Install build requirements
       run: |
+        export DEBIAN_FRONTEND=noninteractive
+        export TZ=UTC
         apt-get update && apt-get -y install \
           python3-pip \
           fakeroot \
@@ -33,7 +35,8 @@ jobs:
           python3-rosinstall \
           python3-rosinstall-generator \
           python3-wstool \
-          build-essential
+          build-essential \
+          tzdata
     
     - name: Install Orange Pi specific dependencies
       run: |

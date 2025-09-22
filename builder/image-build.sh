@@ -18,6 +18,12 @@ set -e # Exit immidiately on non-zero result
 # Orange Pi 3B Debian Bookworm image with ROS Noetic
 SOURCE_IMAGE="https://github.com/SORROWMX/orangepi3b-ros-noetic/releases/download/debian/Orangepi3b_1.0.8_debian_bookworm_server_linux5.10.160.7z"
 
+# Alternative download URLs (fallback)
+ALTERNATIVE_URLS=(
+  "https://github.com/SORROWMX/orangepi3b-ros-noetic/releases/download/debian/Orangepi3b_1.0.8_debian_bookworm_server_linux5.10.160.7z"
+  "https://github.com/SORROWMX/orangepi3b-ros-noetic/releases/latest/download/Orangepi3b_1.0.8_debian_bookworm_server_linux5.10.160.7z"
+)
+
 export DEBIAN_FRONTEND=${DEBIAN_FRONTEND:='noninteractive'}
 export LANG=${LANG:='C.UTF-8'}
 export LC_ALL=${LC_ALL:='C.UTF-8'}
@@ -65,7 +71,36 @@ get_image() {
 
   if [ ! -e "${BUILD_DIR}/${RPI_ARCHIVE_NAME}" ]; then
     echo_stamp "Downloading original Linux distribution"
-    wget --progress=dot:giga -O ${BUILD_DIR}/${RPI_ARCHIVE_NAME} $2
+    # Update SSL certificates and try multiple download methods
+    apt-get update && apt-get install -y ca-certificates curl wget
+    update-ca-certificates
+    
+    # Try multiple URLs and methods
+    DOWNLOAD_SUCCESS=false
+    for url in "${ALTERNATIVE_URLS[@]}"; do
+      echo_stamp "Trying URL: $url"
+      
+      # Try wget with SSL options
+      if wget --progress=dot:giga --no-check-certificate --timeout=30 --tries=3 -O ${BUILD_DIR}/${RPI_ARCHIVE_NAME} "$url"; then
+        DOWNLOAD_SUCCESS=true
+        break
+      fi
+      
+      echo_stamp "wget failed for $url, trying curl"
+      # Fallback to curl
+      if curl -L --insecure --connect-timeout 30 --max-time 300 -o ${BUILD_DIR}/${RPI_ARCHIVE_NAME} "$url"; then
+        DOWNLOAD_SUCCESS=true
+        break
+      fi
+      
+      echo_stamp "Both wget and curl failed for $url"
+    done
+    
+    if [ "$DOWNLOAD_SUCCESS" = false ]; then
+      echo_stamp "All download methods failed!" "ERROR"
+      exit 1
+    fi
+    
     echo_stamp "Downloading complete" "SUCCESS" \
   else echo_stamp "Linux distribution already donwloaded"; fi
 
