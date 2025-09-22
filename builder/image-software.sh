@@ -167,8 +167,10 @@ libnss-mdns \
 device-tree-compiler
 
 echo_stamp "Installing ROS dependencies"
-# Install python3-rosdistro first to resolve dependencies
-my_travis_retry apt-get install --no-install-recommends -y python3-rosdistro
+# Remove any conflicting packages first
+apt-get remove -y python3-rosdistro || true
+# Install python3-rosdistro-modules instead of python3-rosdistro to avoid conflicts
+my_travis_retry apt-get install --no-install-recommends -y python3-rosdistro-modules
 
 echo_stamp "Installing ROS packages"
 my_travis_retry apt-get install --no-install-recommends -y \
