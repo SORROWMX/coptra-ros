@@ -97,14 +97,13 @@ mkdir -p /home/orangepi/.ssh
 chown orangepi:orangepi /home/orangepi/.ssh
 chmod 700 /home/orangepi/.ssh
 
-    # Enable SSH service (disable socket first to avoid conflicts)
+    # Enable SSH service (use only ssh.service for modern OpenSSH)
     systemctl disable sshd.socket || true
-    systemctl daemon-reload
-    systemctl enable sshd.service
+    systemctl disable sshd.service || true
+    systemctl daemon-reload || true
     systemctl enable ssh.service
     
     # Start SSH service
-    systemctl start sshd.service
     systemctl start ssh.service
 
 # Configure SSH to allow password authentication for orangepi user
