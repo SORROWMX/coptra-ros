@@ -51,29 +51,10 @@ echo_stamp() {
   esac
   echo -e ${TEXT}
 }
-
-# Detect if running in Docker or on VM
-if [ -d "/builder" ]; then
-    # Running in Docker
-    BUILDER_DIR="/builder"
-    REPO_DIR="${BUILDER_DIR}/repo"
-    SCRIPTS_DIR="${REPO_DIR}/builder"
-    IMAGES_DIR="${REPO_DIR}/images"
-    echo_stamp "Running in Docker environment"
-else
-    # Running on VM
-    BUILDER_DIR="$(dirname "$(readlink -f "$0")")"
-    REPO_DIR="$(dirname "$BUILDER_DIR")"
-    SCRIPTS_DIR="$BUILDER_DIR"
-    IMAGES_DIR="${REPO_DIR}/images"
-    echo_stamp "Running on VM environment"
-fi
-
-echo_stamp "Paths:"
-echo_stamp "  BUILDER_DIR: $BUILDER_DIR"
-echo_stamp "  REPO_DIR: $REPO_DIR"
-echo_stamp "  SCRIPTS_DIR: $SCRIPTS_DIR"
-echo_stamp "  IMAGES_DIR: $IMAGES_DIR"
+BUILDER_DIR="/builder"
+REPO_DIR="${BUILDER_DIR}/repo"
+SCRIPTS_DIR="${REPO_DIR}/builder"
+IMAGES_DIR="${REPO_DIR}/images"
 
 [[ ! -d ${SCRIPTS_DIR} ]] && (echo_stamp "Directory ${SCRIPTS_DIR} doesn't exist" "ERROR"; exit 1)
 [[ ! -d ${IMAGES_DIR} ]] && mkdir ${IMAGES_DIR} && echo_stamp "Directory ${IMAGES_DIR} was created successful" "SUCCESS"
@@ -88,94 +69,25 @@ IMAGE_PATH="${IMAGES_DIR}/${IMAGE_NAME}"
 get_image() {
   # TEMPLATE: get_image <IMAGE_PATH> <RPI_DONWLOAD_URL>
   local BUILD_DIR=$(dirname $1)
-  local RPI_ARCHIVE_NAME=$(basename $2)
-  local RPI_IMAGE_NAME=$(echo ${RPI_ARCHIVE_NAME} | sed 's/\.zip$/.img/')
+  local RPI_ZIP_NAME=$(basename $2)
+  local RPI_IMAGE_NAME=$(echo ${RPI_ZIP_NAME} | sed 's/zip/img/')
 
-  # Check if final image already exists
-  if [ -f "$1" ] && [ "$FORCE_REBUILD" != "true" ]; then
-    echo_stamp "Image already exists: $1" "SUCCESS"
-    echo_stamp "Skipping download and extraction"
-    echo_stamp "Use FORCE_REBUILD=true to force rebuild"
-    return 0
-  elif [ -f "$1" ] && [ "$FORCE_REBUILD" = "true" ]; then
-    echo_stamp "Force rebuild enabled, removing existing image: $1"
-    rm -f "$1"
-  fi
-
-  # Check if archive exists
-  if [ ! -e "${BUILD_DIR}/${RPI_ARCHIVE_NAME}" ]; then
+  if [ ! -e "${BUILD_DIR}/${RPI_ZIP_NAME}" ]; then
     echo_stamp "Downloading original Linux distribution"
-    
-    # Check available disk space before download
-    available_space=$(df ${BUILD_DIR} | tail -1 | awk '{print $4}')
-    required_space=$((2 * 1024 * 1024))  # 2GB in KB
-    echo_stamp "Available space: $((available_space / 1024 / 1024))GB, Required: 2GB"
-    
-    if [ $available_space -lt $required_space ]; then
-      echo_stamp "Insufficient disk space for download!" "ERROR"
-      echo_stamp "Available: $((available_space / 1024 / 1024))GB, Required: 2GB" "ERROR"
-      exit 1
-    fi
-    
-    # Try multiple URLs and methods
-    DOWNLOAD_SUCCESS=false
-    for url in "${ALTERNATIVE_URLS[@]}"; do
-      echo_stamp "Trying URL: $url"
-      
-      # Try wget with SSL options and resume capability
-      if wget --progress=dot:giga --no-check-certificate --timeout=30 --tries=3 --continue -O ${BUILD_DIR}/${RPI_ARCHIVE_NAME} "$url"; then
-        DOWNLOAD_SUCCESS=true
-        break
-      fi
-      
-      echo_stamp "wget failed for $url, trying curl"
-      # Fallback to curl with resume capability
-      if curl -L --insecure --connect-timeout 30 --max-time 300 -C - -o ${BUILD_DIR}/${RPI_ARCHIVE_NAME} "$url"; then
-        DOWNLOAD_SUCCESS=true
-        break
-      fi
-      
-      echo_stamp "Both wget and curl failed for $url"
-    done
-    
-    if [ "$DOWNLOAD_SUCCESS" = false ]; then
-      echo_stamp "All download methods failed!" "ERROR"
-      exit 1
-    fi
-    
-    echo_stamp "Downloading complete" "SUCCESS"
-    
-    # Clean up any partial downloads
-    if [ -f "${BUILD_DIR}/${RPI_ARCHIVE_NAME}.tmp" ]; then
-      rm -f "${BUILD_DIR}/${RPI_ARCHIVE_NAME}.tmp"
-    fi
-  else 
-    echo_stamp "Archive already downloaded: ${BUILD_DIR}/${RPI_ARCHIVE_NAME}"
-  fi
+    wget --progress=dot:giga -O ${BUILD_DIR}/${RPI_ZIP_NAME} $2
+    echo_stamp "Downloading complete" "SUCCESS" \
+  else echo_stamp "Linux distribution already donwloaded"; fi
 
-  echo_stamp "Extracting Linux distribution image"
-  
-  # Extract ZIP archive
-  if [[ ${RPI_ARCHIVE_NAME} == *.zip ]]; then
-    echo_stamp "Extracting zip archive"
-    unzip -p ${BUILD_DIR}/${RPI_ARCHIVE_NAME} ${RPI_IMAGE_NAME} > $1
-    echo_stamp "Zip extraction complete" "SUCCESS"
-    
-    # Clean up the archive to free space
-    echo_stamp "Cleaning up archive to free disk space"
-    rm -f ${BUILD_DIR}/${RPI_ARCHIVE_NAME}
-    echo_stamp "Archive cleaned up" "SUCCESS"
-  else
-    echo_stamp "Unsupported archive format: ${RPI_ARCHIVE_NAME}" "ERROR"
-    exit 1
-  fi
+  echo_stamp "Unzipping Linux distribution image" \
+  && unzip -p ${BUILD_DIR}/${RPI_ZIP_NAME} ${RPI_IMAGE_NAME} > $1 \
+  && echo_stamp "Unzipping complete" "SUCCESS" \
+  || (echo_stamp "Unzipping was failed!" "ERROR"; exit 1)
 }
+
 
 get_image ${IMAGE_PATH} ${SOURCE_IMAGE}
 
-# Note: Image resizing is now handled by the GitHub Actions workflow
-# using goldarte/img-tool after the build process completes
-# This ensures Docker is available in the runner environment
+${BUILDER_DIR}/image-resize.sh ${IMAGE_PATH} max '7G'
 
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/init_rpi.sh' '/root/'
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/hardware_setup.sh' '/root/'
