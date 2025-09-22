@@ -127,6 +127,7 @@ python3-yaml \
 catkin-tools \
 libgeographiclib-dev \
 libgeographiclib23 \
+libgeographic-dev \
 ros-noetic-ros-core \
 ros-noetic-ros-base \
 ros-noetic-ros-comm \
