@@ -126,7 +126,7 @@ ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec '/builder/image-init.sh' ${IMA
 shopt -s dotglob
 
 # Create target directory structure first
-${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec '/usr/bin/qemu-aarch64-static' /bin/bash -c 'mkdir -p /home/orangepi/catkin_ws/src/coptra'
+${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec '/bin/bash' -c 'mkdir -p /home/orangepi/catkin_ws/src/coptra'
 
 for dir in ${REPO_DIR}/*; do
   # Don't try to copy image into itself

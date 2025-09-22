@@ -107,7 +107,12 @@ case "$COMMAND" in
             chmod +x "$TEMP_DIR$SCRIPT"
         fi
         
-        chroot "$TEMP_DIR" /bin/bash "$SCRIPT" "$@"
+        # Use QEMU for ARM64 emulation if available
+        if [ -f "$TEMP_DIR/usr/bin/qemu-aarch64-static" ]; then
+            chroot "$TEMP_DIR" /usr/bin/qemu-aarch64-static /bin/bash "$SCRIPT" "$@"
+        else
+            chroot "$TEMP_DIR" /bin/bash "$SCRIPT" "$@"
+        fi
         echo_stamp "Script execution complete"
         ;;
     *)
