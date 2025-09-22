@@ -121,6 +121,8 @@ parted \
 e2fsprogs \
 util-linux \
 cloud-guest-utils \
+gdisk \
+qemu-utils \
 libpoco-dev \
 libzbar0 \
 python3-rosdep-modules \

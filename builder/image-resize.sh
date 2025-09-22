@@ -37,6 +37,13 @@ if command -v growpart >/dev/null 2>&1; then
     echo_stamp "growpart available - will use as fallback"
 fi
 
+# Check for qemu-img (preferred method)
+HAS_QEMU_IMG=false
+if command -v qemu-img >/dev/null 2>&1; then
+    HAS_QEMU_IMG=true
+    echo_stamp "qemu-img available - will use for image resize"
+fi
+
 echo_stamp() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
@@ -91,17 +98,24 @@ if [ $ADD_SIZE -gt 0 ]; then
     ADD_MB=$((ADD_SIZE / 1024 / 1024))
     echo_stamp "Adding $ADD_MB MB to image"
     
-    # Resize the image in chunks to avoid memory issues
-    CHUNK_SIZE=1024  # 1GB chunks
-    REMAINING_MB=$ADD_MB
-    
-    while [ $REMAINING_MB -gt 0 ]; do
-        CURRENT_CHUNK=$((REMAINING_MB > CHUNK_SIZE ? CHUNK_SIZE : REMAINING_MB))
-        echo_stamp "Adding chunk: ${CURRENT_CHUNK}MB (${REMAINING_MB}MB remaining)"
+    # Use qemu-img if available (more reliable)
+    if [ "$HAS_QEMU_IMG" = true ]; then
+        echo_stamp "Using qemu-img to resize image"
+        qemu-img resize "$IMAGE_PATH" "$TARGET_SIZE"
+    else
+        # Fallback to dd method
+        echo_stamp "Using dd to resize image"
+        CHUNK_SIZE=1024  # 1GB chunks
+        REMAINING_MB=$ADD_MB
         
-        dd if=/dev/zero bs=1M count=$CURRENT_CHUNK >> "$IMAGE_PATH" 2>/dev/null
-        REMAINING_MB=$((REMAINING_MB - CURRENT_CHUNK))
-    done
+        while [ $REMAINING_MB -gt 0 ]; do
+            CURRENT_CHUNK=$((REMAINING_MB > CHUNK_SIZE ? CHUNK_SIZE : REMAINING_MB))
+            echo_stamp "Adding chunk: ${CURRENT_CHUNK}MB (${REMAINING_MB}MB remaining)"
+            
+            dd if=/dev/zero bs=1M count=$CURRENT_CHUNK >> "$IMAGE_PATH" 2>/dev/null
+            REMAINING_MB=$((REMAINING_MB - CURRENT_CHUNK))
+        done
+    fi
     
     echo_stamp "Image resized"
 else
@@ -122,62 +136,35 @@ LOOP_DEVICE=$(losetup -f --show "$IMAGE_PATH")
 echo_stamp "Using loop device: $LOOP_DEVICE"
 
 # Wait a moment for the loop device to be ready
-sleep 3
+sleep 2
 
 # Force kernel to re-read partition table
 partprobe "$LOOP_DEVICE" 2>/dev/null || true
-sleep 2
+sleep 1
 
-# Find the partition (check both p1 and p2)
+# Find the partition (usually the root partition is p2)
 PARTITION_DEVICE=""
-echo_stamp "Checking for partitions..."
-
-# List all available partitions
-ls -la "${LOOP_DEVICE}"* 2>/dev/null || true
-
 if [ -b "${LOOP_DEVICE}p2" ]; then
     PARTITION_DEVICE="${LOOP_DEVICE}p2"
-    echo_stamp "Found partition 2: $PARTITION_DEVICE"
+    echo_stamp "Found root partition: $PARTITION_DEVICE"
 elif [ -b "${LOOP_DEVICE}p1" ]; then
     PARTITION_DEVICE="${LOOP_DEVICE}p1"
-    echo_stamp "Found partition 1: $PARTITION_DEVICE"
+    echo_stamp "Found partition: $PARTITION_DEVICE"
 else
-    echo_stamp "No partitions found, trying to create them..."
-    
-    # Check if we need to create partitions
-    if ! parted "$LOOP_DEVICE" print 2>/dev/null | grep -q "Partition Table"; then
-        echo_stamp "Creating partition table..."
-        parted "$LOOP_DEVICE" mklabel gpt
-        parted "$LOOP_DEVICE" mkpart primary ext4 1MiB 100%
-        partprobe "$LOOP_DEVICE"
-        sleep 2
-        
-        # Check again
-        if [ -b "${LOOP_DEVICE}p1" ]; then
-            PARTITION_DEVICE="${LOOP_DEVICE}p1"
-            echo_stamp "Created partition 1: $PARTITION_DEVICE"
-        fi
-    fi
-    
-    if [ -z "$PARTITION_DEVICE" ]; then
-        echo_stamp "No partitions found, trying to use entire device as filesystem"
-        # Check if the entire device has a filesystem
-        if file -s "$LOOP_DEVICE" | grep -q "ext4\|ext3\|ext2"; then
-            PARTITION_DEVICE="$LOOP_DEVICE"
-            echo_stamp "Using entire device as filesystem: $PARTITION_DEVICE"
-        else
-            echo_stamp "Error: No partition or filesystem found on loop device"
-            losetup -d "$LOOP_DEVICE"
-            exit 1
-        fi
+    echo_stamp "No partitions found, checking if entire device has filesystem"
+    if file -s "$LOOP_DEVICE" | grep -q "ext4\|ext3\|ext2"; then
+        PARTITION_DEVICE="$LOOP_DEVICE"
+        echo_stamp "Using entire device as filesystem: $PARTITION_DEVICE"
+    else
+        echo_stamp "Error: No partition or filesystem found"
+        losetup -d "$LOOP_DEVICE"
+        exit 1
     fi
 fi
 
-echo_stamp "Using partition: $PARTITION_DEVICE"
-
-# Resize the partition using parted (only if we have partitions)
+# Resize the partition (only if we have partitions)
 if [ "$PARTITION_DEVICE" != "$LOOP_DEVICE" ]; then
-    echo_stamp "Resizing partition table"
+    echo_stamp "Resizing partition"
     
     # Determine which partition to resize
     PARTITION_NUM=""
@@ -190,26 +177,21 @@ if [ "$PARTITION_DEVICE" != "$LOOP_DEVICE" ]; then
     if [ -n "$PARTITION_NUM" ]; then
         echo_stamp "Resizing partition $PARTITION_NUM"
         
-        # Try growpart first (more reliable for GPT)
+        # Use growpart (most reliable for GPT)
         if [ "$HAS_GROWPART" = true ]; then
             echo_stamp "Using growpart to resize partition"
             if growpart "$LOOP_DEVICE" "$PARTITION_NUM"; then
                 echo_stamp "growpart succeeded"
             else
                 echo_stamp "growpart failed, trying parted"
-                # Try parted with non-interactive approach
                 if ! parted "$LOOP_DEVICE" resizepart "$PARTITION_NUM" 100% --script; then
-                    echo_stamp "Error: Both growpart and parted failed"
-                    losetup -d "$LOOP_DEVICE"
-                    exit 1
+                    echo_stamp "Warning: Partition resize failed, but continuing with filesystem resize"
                 fi
             fi
         else
             echo_stamp "Using parted to resize partition"
             if ! parted "$LOOP_DEVICE" resizepart "$PARTITION_NUM" 100% --script; then
-                echo_stamp "Error: parted failed"
-                losetup -d "$LOOP_DEVICE"
-                exit 1
+                echo_stamp "Warning: Partition resize failed, but continuing with filesystem resize"
             fi
         fi
     else
@@ -227,16 +209,22 @@ partprobe "$LOOP_DEVICE" 2>/dev/null || true
 sleep 1
 
 # Resize the filesystem
-echo_stamp "Resizing filesystem"
+echo_stamp "Resizing filesystem on: $PARTITION_DEVICE"
 echo_stamp "Filesystem size before resize:"
 df -h "$PARTITION_DEVICE" 2>/dev/null || echo "Cannot check filesystem size"
 
-if resize2fs "$PARTITION_DEVICE"; then
-    echo_stamp "Filesystem resized successfully"
-    echo_stamp "Filesystem size after resize:"
-    df -h "$PARTITION_DEVICE" 2>/dev/null || echo "Cannot check filesystem size"
+# Check if the device has a filesystem
+if file -s "$PARTITION_DEVICE" | grep -q "ext4\|ext3\|ext2"; then
+    echo_stamp "Filesystem detected, resizing..."
+    if resize2fs "$PARTITION_DEVICE"; then
+        echo_stamp "Filesystem resized successfully"
+        echo_stamp "Filesystem size after resize:"
+        df -h "$PARTITION_DEVICE" 2>/dev/null || echo "Cannot check filesystem size"
+    else
+        echo_stamp "Warning: Filesystem resize failed, but continuing..."
+    fi
 else
-    echo_stamp "Warning: Filesystem resize failed, but continuing..."
+    echo_stamp "No filesystem detected on $PARTITION_DEVICE, skipping resize"
 fi
 
 # Clean up
