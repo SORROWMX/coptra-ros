@@ -162,7 +162,7 @@ ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec "${BUILDER_DIR}/image-init.sh"
 shopt -s dotglob
 
 # Create target directory structure first
-${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec '/bin/bash' -c 'mkdir -p /home/orangepi/catkin_ws/src/coptra'
+${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec "${BUILDER_DIR}/create-dirs.sh"
 
 for dir in ${REPO_DIR}/*; do
   # Don't try to copy image into itself
