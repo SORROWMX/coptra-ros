@@ -33,7 +33,10 @@ CURRENT_SIZE=$(stat -c%s "$IMAGE_PATH")
 echo_stamp "Current size: $((CURRENT_SIZE / 1024 / 1024)) MB"
 
 # Parse target size
-if [[ "$TARGET_SIZE" =~ ^([0-9]+)([GMK]?)$ ]]; then
+if [ "$TARGET_SIZE" = "max" ]; then
+    # For max mode, we'll calculate the size based on current size + buffer
+    TARGET_BYTES=$((CURRENT_SIZE + 3 * 1024 * 1024 * 1024))  # Add 3GB buffer
+elif [[ "$TARGET_SIZE" =~ ^([0-9]+)([GMK]?)$ ]]; then
     SIZE_NUM="${BASH_REMATCH[1]}"
     SIZE_UNIT="${BASH_REMATCH[2]}"
     
@@ -50,13 +53,14 @@ if [[ "$TARGET_SIZE" =~ ^([0-9]+)([GMK]?)$ ]]; then
     esac
 else
     echo "Error: Invalid size format: $TARGET_SIZE"
+    echo "Valid formats: 7G, 8G, 10G, max"
     exit 1
 fi
 
 echo_stamp "Target size: $((TARGET_BYTES / 1024 / 1024)) MB"
 
 # Calculate how much to add
-if [ "$MODE" = "max" ]; then
+if [ "$MODE" = "max" ] || [ "$TARGET_SIZE" = "max" ]; then
     # Resize to target size
     ADD_SIZE=$((TARGET_BYTES - CURRENT_SIZE))
 else
