@@ -18,8 +18,24 @@ jobs:
         run: |
           # Make scripts executable
           chmod +x builder/*.sh
-          # Run build in Docker
-          docker run --privileged --rm -v /dev:/dev -v $(pwd):/builder/repo -e TRAVIS_TAG="${{ github.event.release.tag_name }}" sfalexrog/img-tool:qemu-update
+          
+          # Create temporary directory structure for Docker
+          mkdir -p /tmp/docker-builder
+          
+          # Copy builder scripts to expected location
+          cp builder/*.sh /tmp/docker-builder/
+          chmod +x /tmp/docker-builder/*.sh
+          
+          # Run build in Docker with proper volume mounts
+          docker run --privileged --rm \
+            -v /dev:/dev \
+            -v $(pwd):/builder/repo \
+            -v /tmp/docker-builder:/builder \
+            -e TRAVIS_TAG="${{ github.event.release.tag_name }}" \
+            sfalexrog/img-tool:qemu-update
+          
+          # Clean up temporary files
+          rm -rf /tmp/docker-builder
       - name: Compress Orange Pi image
         run: |
           cd images && sudo chmod -R 777 . && zip -9 $(echo *_*).zip *_* && ls -l . && unzip -l *_*.zip
