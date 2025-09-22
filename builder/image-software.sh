@@ -1,7 +1,9 @@
 #! /usr/bin/env bash
 
 #
-# Script for installing software to the image.
+# Script for installing software to Orange Pi 3B Coptra image
+# For VM build: sudo ./build-on-vm.sh
+# For Docker build: docker run --privileged -it --rm -v /dev:/dev -v $(pwd):/builder/repo smirart/builder
 #
 # Copyright (C) 2018 Copter Express Technologies
 #

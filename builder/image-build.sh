@@ -1,8 +1,9 @@
 #! /usr/bin/env bash
 
 #
-# Script for build the image. Used builder script of the target repo.
-# For build: docker run --privileged -it --rm -v /dev:/dev -v $(pwd):/builder/repo smirart/builder
+# Script for building Orange Pi 3B Coptra image
+# For VM build: sudo ./build-on-vm.sh
+# For Docker build: docker run --privileged -it --rm -v /dev:/dev -v $(pwd):/builder/repo smirart/builder
 #
 # Copyright (C) 2018 Copter Express Technologies
 #
@@ -48,10 +49,28 @@ echo_stamp() {
   echo -e ${TEXT}
 }
 
-BUILDER_DIR="/builder"
-REPO_DIR="${BUILDER_DIR}/repo"
-SCRIPTS_DIR="${REPO_DIR}/builder"
-IMAGES_DIR="${REPO_DIR}/images"
+# Detect if running in Docker or on VM
+if [ -d "/builder" ]; then
+    # Running in Docker
+    BUILDER_DIR="/builder"
+    REPO_DIR="${BUILDER_DIR}/repo"
+    SCRIPTS_DIR="${REPO_DIR}/builder"
+    IMAGES_DIR="${REPO_DIR}/images"
+    echo_stamp "Running in Docker environment"
+else
+    # Running on VM
+    BUILDER_DIR="$(dirname "$(readlink -f "$0")")"
+    REPO_DIR="$(dirname "$BUILDER_DIR")"
+    SCRIPTS_DIR="$BUILDER_DIR"
+    IMAGES_DIR="${REPO_DIR}/images"
+    echo_stamp "Running on VM environment"
+fi
+
+echo_stamp "Paths:"
+echo_stamp "  BUILDER_DIR: $BUILDER_DIR"
+echo_stamp "  REPO_DIR: $REPO_DIR"
+echo_stamp "  SCRIPTS_DIR: $SCRIPTS_DIR"
+echo_stamp "  IMAGES_DIR: $IMAGES_DIR"
 
 [[ ! -d ${SCRIPTS_DIR} ]] && (echo_stamp "Directory ${SCRIPTS_DIR} doesn't exist" "ERROR"; exit 1)
 [[ ! -d ${IMAGES_DIR} ]] && mkdir ${IMAGES_DIR} && echo_stamp "Directory ${IMAGES_DIR} was created successful" "SUCCESS"
@@ -119,7 +138,7 @@ get_image ${IMAGE_PATH} ${SOURCE_IMAGE}
 
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/init_rpi.sh' '/root/'
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/hardware_setup.sh' '/root/'
-${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec '/builder/image-init.sh' ${IMAGE_VERSION} ${SOURCE_IMAGE}
+${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec "${BUILDER_DIR}/image-init.sh" ${IMAGE_VERSION} ${SOURCE_IMAGE}
 
 # Copy cloned repository to the image
 # Include dotfiles in globs (asterisks)
@@ -143,9 +162,9 @@ ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/rsysrot
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/butterfly.service' '/lib/systemd/system/'
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/butterfly.socket' '/lib/systemd/system/'
 # software install
-${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec '/builder/image-software.sh'
+${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec "${BUILDER_DIR}/image-software.sh"
 # network setup
-${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec '/builder/image-network.sh'
+${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec "${BUILDER_DIR}/image-network.sh"
 # avahi setup
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/avahi-services/sftp-ssh.service' '/etc/avahi/services'
 
@@ -156,7 +175,7 @@ ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/ros_pyt
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/pigpiod.service' '/lib/systemd/system/'
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/launch.nanorc' '/usr/share/nano/'
 # Add rename script
-${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec '/builder/image-ros.sh' ${REPO_URL} ${IMAGE_VERSION} false false ${NUMBER_THREADS}
-${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec '/builder/image-validate.sh'
+${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec "${BUILDER_DIR}/image-ros.sh" ${REPO_URL} ${IMAGE_VERSION} false false ${NUMBER_THREADS}
+${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec "${BUILDER_DIR}/image-validate.sh"
 
 ${BUILDER_DIR}/image-resize.sh ${IMAGE_PATH}

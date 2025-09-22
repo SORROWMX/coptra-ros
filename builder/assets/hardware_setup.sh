@@ -1,8 +1,9 @@
 #! /usr/bin/env bash
 
 #
-# Script for build the image. Used builder script of the target repo
-# For build: docker run --privileged -it --rm -v /dev:/dev -v $(pwd):/builder/repo smirart/builder
+# Script for Orange Pi 3B hardware setup
+# For VM build: sudo ./build-on-vm.sh
+# For Docker build: docker run --privileged -it --rm -v /dev:/dev -v $(pwd):/builder/repo smirart/builder
 #
 # Copyright (C) 2018 Copter Express Technologies
 #

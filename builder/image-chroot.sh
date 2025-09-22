@@ -99,17 +99,19 @@ case "$COMMAND" in
         
         # Copy script to chroot if it's not already there
         SCRIPT_NAME=$(basename "$SCRIPT")
-        if [ ! -f "$TEMP_DIR$SCRIPT" ]; then
-            echo_stamp "Copying script $SCRIPT to chroot"
+        CHROOT_SCRIPT_PATH="/builder/$SCRIPT_NAME"
+        
+        if [ ! -f "$TEMP_DIR$CHROOT_SCRIPT_PATH" ]; then
+            echo_stamp "Copying script $SCRIPT to chroot as $CHROOT_SCRIPT_PATH"
             # Create directory structure if it doesn't exist
-            mkdir -p "$(dirname "$TEMP_DIR$SCRIPT")"
-            cp "$SCRIPT" "$TEMP_DIR$SCRIPT"
-            chmod +x "$TEMP_DIR$SCRIPT"
+            mkdir -p "$(dirname "$TEMP_DIR$CHROOT_SCRIPT_PATH")"
+            cp "$SCRIPT" "$TEMP_DIR$CHROOT_SCRIPT_PATH"
+            chmod +x "$TEMP_DIR$CHROOT_SCRIPT_PATH"
         fi
         
         # Execute script in chroot (binfmt_misc should handle ARM64 emulation automatically)
-        echo_stamp "Executing script in chroot: $SCRIPT"
-        chroot "$TEMP_DIR" /bin/sh "$SCRIPT" "$@"
+        echo_stamp "Executing script in chroot: $CHROOT_SCRIPT_PATH"
+        chroot "$TEMP_DIR" /bin/sh "$CHROOT_SCRIPT_PATH" "$@"
         echo_stamp "Script execution complete"
         ;;
     *)
