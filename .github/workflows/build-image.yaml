@@ -13,19 +13,31 @@ jobs:
   build-orange-pi-image:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
       - name: Maximize build disk space
         uses: easimon/maximize-build-space@master
         with:
-          root-reserve-mb: 1024
-          swap-size-mb: 2048
+          root-reserve-mb: 512
+          temp-reserve-mb: 50
+          swap-size-mb: 1024
+          overprovision-lvm: 'true'
           remove-dotnet: 'true'
           remove-android: 'true'
           remove-haskell: 'true'
-          remove-swift: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
           
-      - name: Clean up system to free space
+      - uses: actions/checkout@v4
+      
+      - name: Verify checkout and show workspace
+        run: |
+          echo "=== Workspace contents ==="
+          ls -la
+          echo "=== Builder directory contents ==="
+          ls -la builder/ || echo "Builder directory not found"
+          echo "=== Available disk space ==="
+          df -h
+          
+      - name: Aggressive cleanup to free space
         run: |
           echo "=== Disk space before cleanup ==="
           df -h
@@ -35,17 +47,51 @@ jobs:
           sudo apt-get autoremove -y
           sudo apt-get autoclean
           
-          # Clean up Docker
+          # Clean up Docker more aggressively
           docker system prune -af --volumes || true
+          docker image prune -af || true
+          docker container prune -f || true
+          docker volume prune -f || true
+          docker network prune -f || true
           
           # Clean up temporary files
           sudo rm -rf /tmp/*
           sudo rm -rf /var/tmp/*
+          sudo rm -rf /var/cache/*
+          sudo rm -rf /var/log/*.log
+          sudo rm -rf /var/log/*.gz
           
-          # Clean up logs
-          sudo journalctl --vacuum-time=1d || true
+          # Clean up logs more aggressively
+          sudo journalctl --vacuum-time=1h || true
+          sudo journalctl --vacuum-size=100M || true
           
-          echo "=== Disk space after cleanup ==="
+          # Clean up snap packages if they exist
+          sudo snap list --all | awk '/disabled/{print $1, $3}' | while read snapname revision; do
+            sudo snap remove "$snapname" --revision="$revision" || true
+          done
+          
+          # Clean up old kernels
+          sudo apt-get purge -y $(dpkg -l | grep '^ii.*linux-image' | awk '{print $2}' | grep -v $(uname -r)) || true
+          
+          # Clean up /var/lib/apt/lists
+          sudo rm -rf /var/lib/apt/lists/*
+          
+          # Clean up pip cache
+          sudo rm -rf /root/.cache/pip || true
+          sudo rm -rf /home/runner/.cache/pip || true
+          
+          # Clean up npm cache
+          sudo rm -rf /root/.npm || true
+          sudo rm -rf /home/runner/.npm || true
+          
+          # Clean up conda cache
+          sudo rm -rf /opt/conda/pkgs || true
+          
+          # Force garbage collection
+          sudo sync
+          sudo echo 3 > /proc/sys/vm/drop_caches || true
+          
+          echo "=== Disk space after aggressive cleanup ==="
           df -h
           
       - name: Build Orange Pi 3B Coptra image
@@ -54,21 +100,29 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y file parted e2fsprogs util-linux cloud-guest-utils gdisk qemu-utils
           
+          # Check if builder directory exists (should be available after checkout)
+          if [ ! -d "builder" ]; then
+            echo "Error: builder directory not found. Checkout may have failed."
+            exit 1
+          fi
+          
           # Make scripts executable
           chmod +x builder/*.sh
           
-          # Create temporary directory structure for Docker
-          mkdir -p /tmp/docker-builder
+          # Use the expanded workspace for temporary files
+          mkdir -p docker-builder
+          mkdir -p images
           
-          # Copy builder scripts to expected location (excluding image-resize.sh)
-          cp builder/*.sh /tmp/docker-builder/
-          rm -f /tmp/docker-builder/image-resize.sh  # Remove custom resize script
-          chmod +x /tmp/docker-builder/*.sh
+          # Copy builder scripts to workspace location (excluding image-resize.sh)
+          cp builder/*.sh docker-builder/
+          rm -f docker-builder/image-resize.sh  # Remove custom resize script
+          chmod +x docker-builder/*.sh
           
           # Setup QEMU for ARM64 emulation
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
           
           # Run build in Docker with proper volume mounts using goldarte/img-tool
+          # Use the expanded workspace for maximum space
           docker run --privileged --rm \
             -v /dev:/dev \
             -v $(pwd):/mnt \
@@ -76,7 +130,7 @@ jobs:
             goldarte/img-tool:v0.5
           
           # Clean up temporary files
-          rm -rf /tmp/docker-builder
+          rm -rf docker-builder
           
           # Clean up Docker images to free space
           echo "=== Cleaning up Docker images ==="
@@ -131,9 +185,19 @@ jobs:
           # Clean up any remaining temporary files
           sudo rm -rf /tmp/*
           sudo rm -rf /var/tmp/*
+          rm -rf docker-builder
           
           # Clean up Docker one more time
           docker system prune -af --volumes || true
+          docker image prune -af || true
+          
+          # Clean up package cache again
+          sudo apt-get clean
+          sudo apt-get autoremove -y
+          
+          # Force garbage collection
+          sudo sync
+          sudo echo 3 > /proc/sys/vm/drop_caches || true
           
           echo "=== Disk space after final cleanup ==="
           df -h
