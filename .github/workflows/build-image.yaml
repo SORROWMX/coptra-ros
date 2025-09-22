@@ -46,8 +46,8 @@ jobs:
             -e TZ=UTC \
             sfalexrog/img-tool:qemu-update \
             bash -c "
-              # Install QEMU for ARM64 emulation
-              apt-get update && apt-get install -y qemu-user-static binfmt-support
+              # Install QEMU for ARM64 emulation and Git
+              apt-get update && apt-get install -y qemu-user-static binfmt-support git
               
               # Check QEMU installation
               echo 'QEMU binaries:'
@@ -63,6 +63,9 @@ jobs:
               # Verify QEMU setup
               echo 'QEMU setup verification:'
               binfmt-support --status
+              
+              # Fix Git security issue
+              git config --global --add safe.directory /builder/repo
               
               # Navigate to repo and run build script
               cd /builder/repo && chmod +x builder/image-build.sh && ./builder/image-build.sh

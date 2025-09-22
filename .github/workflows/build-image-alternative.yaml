@@ -50,6 +50,9 @@ jobs:
               # Copy QEMU binaries
               cp /usr/bin/qemu-arm-static /usr/bin/qemu-aarch64-static 2>/dev/null || true
               
+              # Fix Git security issue
+              git config --global --add safe.directory /builder/repo
+              
               # Navigate to repo and run build script
               cd /builder/repo && chmod +x builder/image-build.sh && ./builder/image-build.sh
             "
