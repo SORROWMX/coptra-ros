@@ -1,104 +1,104 @@
 #!/bin/bash
 
-# Скрипт для сборки образа Orange Pi 3B на виртуальной машине
-# Использование: ./build-on-vm.sh
+# Script for building Orange Pi 3B image on virtual machine
+# Usage: ./build-on-vm.sh
 
 set -e
 
-echo "🚀 Запуск сборки образа Orange Pi 3B Coptra на VM"
-echo "=================================================="
+echo "Starting Orange Pi 3B Coptra image build on VM"
+echo "=============================================="
 
-# Проверка прав root
+# Check root privileges
 if [ "$EUID" -ne 0 ]; then
-    echo "❌ Запустите скрипт с правами root: sudo ./build-on-vm.sh"
+    echo "Error: Run script with root privileges: sudo ./build-on-vm.sh"
     exit 1
 fi
 
-# Проверка доступности необходимых команд
-echo "🔍 Проверка зависимостей..."
+# Check required commands availability
+echo "Checking dependencies..."
 for cmd in qemu-aarch64-static kpartx parted unzip wget curl git; do
     if ! command -v $cmd &> /dev/null; then
-        echo "❌ Команда $cmd не найдена. Установите зависимости:"
+        echo "Error: Command $cmd not found. Install dependencies:"
         echo "   apt install -y qemu-user-static kpartx parted unzip wget curl git"
         exit 1
     fi
 done
 
-# Проверка binfmt
+# Check binfmt
 if ! update-binfmts --status | grep -q "qemu-aarch64"; then
-    echo "⚠️  Настройка binfmt для QEMU..."
+    echo "Warning: Setting up binfmt for QEMU..."
     update-binfmts --enable qemu-aarch64
 fi
 
-# Настройка переменных окружения
+# Set environment variables
 export DEBIAN_FRONTEND=noninteractive
 export TZ=UTC
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 
-# Проверка свободного места
+# Check available disk space
 AVAILABLE_SPACE=$(df . | tail -1 | awk '{print $4}')
-if [ "$AVAILABLE_SPACE" -lt 10485760 ]; then  # 10GB в KB
-    echo "❌ Недостаточно свободного места. Нужно минимум 10GB"
-    echo "   Доступно: $((AVAILABLE_SPACE / 1024 / 1024))GB"
+if [ "$AVAILABLE_SPACE" -lt 10485760 ]; then  # 10GB in KB
+    echo "Error: Not enough free space. Need at least 10GB"
+    echo "   Available: $((AVAILABLE_SPACE / 1024 / 1024))GB"
     exit 1
 fi
 
-echo "✅ Зависимости проверены"
-echo "💾 Свободное место: $((AVAILABLE_SPACE / 1024 / 1024))GB"
+echo "Dependencies checked successfully"
+echo "Free space: $((AVAILABLE_SPACE / 1024 / 1024))GB"
 
-# Создание директории для образов если не существует
+# Create images directory if not exists
 mkdir -p images
 
-# Очистка старых loop устройств
-echo "🧹 Очистка старых loop устройств..."
+# Clean up old loop devices
+echo "Cleaning up old loop devices..."
 losetup -D 2>/dev/null || true
 
-# Сделать скрипты исполняемыми
-echo "🔧 Настройка скриптов..."
+# Make scripts executable
+echo "Setting up scripts..."
 chmod +x builder/*.sh
 
-# Запуск сборки
-echo "🏗️  Начинаем сборку образа..."
-echo "   Это может занять 1-3 часа в зависимости от мощности VM"
+# Start build process
+echo "Starting image build..."
+echo "   This may take 1-3 hours depending on VM performance"
 echo ""
 
-# Запуск основного скрипта сборки
+# Run main build script
 ./builder/image-build.sh
 
-# Проверка результата
+# Check result
 if [ $? -eq 0 ]; then
     echo ""
-    echo "🎉 Сборка завершена успешно!"
-    echo "📁 Образ находится в папке images/"
-    ls -la images/*.img 2>/dev/null || echo "   Образы не найдены"
+    echo "Build completed successfully!"
+    echo "Image is located in images/ directory"
+    ls -la images/*.img 2>/dev/null || echo "   No images found"
     
-    # Предложение сжать образ
+    # Offer to compress image
     echo ""
-    read -p "🗜️  Сжать образ для экономии места? (y/N): " -n 1 -r
+    read -p "Compress image to save space? (y/N): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "🗜️  Сжимаем образ..."
+        echo "Compressing image..."
         for img in images/*.img; do
             if [ -f "$img" ]; then
-                echo "   Сжимаем $img..."
+                echo "   Compressing $img..."
                 xz -9 "$img"
-                echo "   ✅ Готово: ${img}.xz"
+                echo "   Done: ${img}.xz"
             fi
         done
     fi
     
     echo ""
-    echo "🎯 Следующие шаги:"
-    echo "   1. Скачайте образ с VM"
-    echo "   2. Запишите на microSD карту с помощью balenaEtcher"
-    echo "   3. Вставьте карту в Orange Pi 3B и включите"
-    echo "   4. Подключитесь к WiFi 'coptra-XXXX' (пароль: coptrawifi)"
-    echo "   5. Откройте http://192.168.11.1 в браузере"
+    echo "Next steps:"
+    echo "   1. Download image from VM"
+    echo "   2. Flash to microSD card using balenaEtcher"
+    echo "   3. Insert card into Orange Pi 3B and power on"
+    echo "   4. Connect to WiFi 'coptra-XXXX' (password: coptrawifi)"
+    echo "   5. Open http://192.168.11.1 in browser"
     
 else
     echo ""
-    echo "❌ Сборка завершилась с ошибкой!"
-    echo "🔍 Проверьте логи выше для диагностики"
+    echo "Build failed with error!"
+    echo "Check logs above for diagnostics"
     exit 1
 fi
