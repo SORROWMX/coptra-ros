@@ -178,9 +178,7 @@ echo_stamp "Using partition: $PARTITION_DEVICE"
 # Resize the partition using parted (only if we have partitions)
 if [ "$PARTITION_DEVICE" != "$LOOP_DEVICE" ]; then
     echo_stamp "Resizing partition table"
-    # First, fix the GPT to use all available space
-    echo "Fix" | parted "$LOOP_DEVICE" ---pretend-input-tty
-
+    
     # Determine which partition to resize
     PARTITION_NUM=""
     if [ -b "${LOOP_DEVICE}p2" ]; then
@@ -191,12 +189,25 @@ if [ "$PARTITION_DEVICE" != "$LOOP_DEVICE" ]; then
 
     if [ -n "$PARTITION_NUM" ]; then
         echo_stamp "Resizing partition $PARTITION_NUM"
-        if ! parted "$LOOP_DEVICE" resizepart "$PARTITION_NUM" 100%; then
-            echo_stamp "parted failed, trying growpart as fallback"
-            if [ "$HAS_GROWPART" = true ]; then
-                growpart "$LOOP_DEVICE" "$PARTITION_NUM"
+        
+        # Try growpart first (more reliable for GPT)
+        if [ "$HAS_GROWPART" = true ]; then
+            echo_stamp "Using growpart to resize partition"
+            if growpart "$LOOP_DEVICE" "$PARTITION_NUM"; then
+                echo_stamp "growpart succeeded"
             else
-                echo_stamp "Error: Both parted and growpart failed"
+                echo_stamp "growpart failed, trying parted"
+                # Try parted with non-interactive approach
+                if ! parted "$LOOP_DEVICE" resizepart "$PARTITION_NUM" 100% --script; then
+                    echo_stamp "Error: Both growpart and parted failed"
+                    losetup -d "$LOOP_DEVICE"
+                    exit 1
+                fi
+            fi
+        else
+            echo_stamp "Using parted to resize partition"
+            if ! parted "$LOOP_DEVICE" resizepart "$PARTITION_NUM" 100% --script; then
+                echo_stamp "Error: parted failed"
                 losetup -d "$LOOP_DEVICE"
                 exit 1
             fi
@@ -210,13 +221,20 @@ else
     echo_stamp "Using entire device, skipping partition resize"
 fi
 
-# Wait for partition table to be updated
+# Wait for partition table to be updated and force re-read
 sleep 2
+partprobe "$LOOP_DEVICE" 2>/dev/null || true
+sleep 1
 
 # Resize the filesystem
 echo_stamp "Resizing filesystem"
+echo_stamp "Filesystem size before resize:"
+df -h "$PARTITION_DEVICE" 2>/dev/null || echo "Cannot check filesystem size"
+
 if resize2fs "$PARTITION_DEVICE"; then
     echo_stamp "Filesystem resized successfully"
+    echo_stamp "Filesystem size after resize:"
+    df -h "$PARTITION_DEVICE" 2>/dev/null || echo "Cannot check filesystem size"
 else
     echo_stamp "Warning: Filesystem resize failed, but continuing..."
 fi
