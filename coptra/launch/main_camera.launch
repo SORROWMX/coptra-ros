@@ -37,7 +37,7 @@
         args="messages image_raw $(arg throttled_topic_rate) image_raw_throttled" if="$(arg throttled_topic)"/>
 
     <!-- nodelet manager for image processing -->
-    <node pkg="nodelet" type="nodelet" name="main_camera_nodelet_manager" args="manager" if="$(arg rectify)"/>
+    <node pkg="nodelet" type="nodelet" name="main_camera_nodelet_manager" args="manager"/>
 
     <!-- rectified image topic -->
     <node pkg="nodelet" type="nodelet" name="main_camera_image_proc" args="load image_proc/rectify main_camera_nodelet_manager" if="$(arg rectify)">
