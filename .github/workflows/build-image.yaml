@@ -11,178 +11,46 @@ on:
 
 jobs:
   build-orange-pi-image:
-    # Use larger runner for more disk space and better performance
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
-      - name: Maximize build disk space
-        uses: easimon/maximize-build-space@master
-        with:
-          root-reserve-mb: 1024
-          swap-size-mb: 2048
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-          remove-swift: 'true'
-          
-      - name: Install system dependencies
+      - uses: actions/checkout@v4
+      - name: Build Orange Pi 3B Coptra image
         run: |
+          # Install required packages for image manipulation
           sudo apt-get update
-          sudo apt-get install -y \
-            file \
-            parted \
-            e2fsprogs \
-            util-linux \
-            cloud-guest-utils \
-            gdisk \
-            qemu-utils \
-            qemu-system-arm \
-            kpartx \
-            dosfstools \
-            mtools \
-            zip \
-            unzip \
-            p7zip-full
-            
-      - name: Verify disk space
-        run: |
-          echo "Available disk space:"
-          df -h
-          echo "Free space:"
-          free -h
+          sudo apt-get install -y file parted e2fsprogs util-linux cloud-guest-utils gdisk qemu-utils
           
-      - name: Prepare build environment
-        run: |
           # Make scripts executable
           chmod +x builder/*.sh
           
           # Create temporary directory structure for Docker
           mkdir -p /tmp/docker-builder
           
-          # Copy builder scripts to expected location
+          # Copy builder scripts to expected location (excluding image-resize.sh)
           cp builder/*.sh /tmp/docker-builder/
+          rm -f /tmp/docker-builder/image-resize.sh  # Remove custom resize script
           chmod +x /tmp/docker-builder/*.sh
           
-          # Create images directory if it doesn't exist
-          mkdir -p images
-          
-      - name: Setup QEMU for ARM64 emulation
-        run: |
           # Setup QEMU for ARM64 emulation
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
           
-      - name: Build Orange Pi 3B Coptra image
-        run: |
-          # Run build in Docker with proper volume mounts
+          # Run build in Docker with proper volume mounts using goldarte/img-tool
           docker run --privileged --rm \
             -v /dev:/dev \
-            -v $(pwd):/builder/repo \
-            -v /tmp/docker-builder:/builder \
+            -v $(pwd):/mnt \
             -e TRAVIS_TAG="${{ github.event.release.tag_name }}" \
-            -e IMAGE_SIZE="15G" \
-            -e RESIZE_MODE="auto" \
-            sfalexrog/img-tool:qemu-update
-            
-      - name: Post-process and resize images
-        run: |
-          # Find all .img files in images directory
-          if [ -d "images" ] && [ "$(ls -A images/*.img 2>/dev/null)" ]; then
-            echo "Found image files:"
-            ls -lh images/*.img
-            
-            # Resize each image to ensure adequate space for ROS installation
-            for img_file in images/*.img; do
-              if [ -f "$img_file" ]; then
-                echo "Processing image: $img_file"
-                
-                # Get current size
-                current_size=$(stat -c%s "$img_file")
-                current_size_gb=$((current_size / 1024 / 1024 / 1024))
-                echo "Current size: ${current_size_gb}GB"
-                
-                # Determine target size based on current size
-                if [ $current_size_gb -lt 8 ]; then
-                  target_size="12G"
-                elif [ $current_size_gb -lt 12 ]; then
-                  target_size="16G"
-                else
-                  target_size="20G"
-                fi
-                
-                echo "Target size: $target_size"
-                
-                # Resize the image
-                ./builder/image-resize.sh "$img_file" "$target_size" "auto"
-                
-                # Verify the resize
-                new_size=$(stat -c%s "$img_file")
-                new_size_gb=$((new_size / 1024 / 1024 / 1024))
-                echo "New size: ${new_size_gb}GB"
-                
-                # Show final image info
-                echo "Final image information:"
-                ls -lh "$img_file"
-                file "$img_file"
-              fi
-            done
-          else
-            echo "No image files found in images directory"
-            ls -la images/ || echo "Images directory does not exist"
-          fi
+            goldarte/img-tool:v0.5
           
-      - name: Verify final disk usage
+          # Clean up temporary files
+          rm -rf /tmp/docker-builder
+      - name: Compress Orange Pi image
         run: |
-          echo "Final disk usage:"
-          df -h
-          echo "Images directory contents:"
-          ls -lh images/ || echo "No images directory"
-          
-      - name: Compress Orange Pi images
-        run: |
-          if [ -d "images" ] && [ "$(ls -A images/*.img 2>/dev/null)" ]; then
-            cd images
-            
-            # Create compressed archives for each image
-            for img_file in *.img; do
-              if [ -f "$img_file" ]; then
-                echo "Compressing $img_file..."
-                
-                # Create zip archive with maximum compression
-                zip_name="${img_file%.img}.zip"
-                zip -9 "$zip_name" "$img_file"
-                
-                # Also create 7z archive for better compression
-                sevenz_name="${img_file%.img}.7z"
-                7z a -t7z -mx=9 "$sevenz_name" "$img_file"
-                
-                echo "Created archives: $zip_name, $sevenz_name"
-              fi
-            done
-            
-            # Show final contents
-            echo "Final compressed files:"
-            ls -lh *.zip *.7z 2>/dev/null || echo "No compressed files created"
-            
-            # Show compression ratios
-            for zip_file in *.zip; do
-              if [ -f "$zip_file" ]; then
-                echo "Archive info for $zip_file:"
-                unzip -l "$zip_file"
-              fi
-            done
-          else
-            echo "No images to compress"
-          fi
-          
-      - name: Upload Orange Pi images
+          cd images && sudo chmod -R 777 . && zip -9 $(echo *_*).zip *_* && ls -l . && unzip -l *_*.zip
+      - name: Upload Orange Pi image
         uses: softprops/action-gh-release@v1
         if: ${{ github.event_name == 'release' }}
         with:
-          files: |
-            images/*.zip
-            images/*.7z
+          files: images/*_*.zip
           prerelease: false
           body: |
             ## Orange Pi 3B Coptra Image
@@ -194,42 +62,12 @@ jobs:
             - Web interface for network configuration
             - Butterfly terminal server
             - Nginx web server
-            - **Increased disk space for additional packages**
-            - **Optimized for apt install operations**
             
             ### Installation:
-            1. Download and extract the image (choose .zip or .7z format)
+            1. Download and extract the image
             2. Flash to microSD card using balenaEtcher or similar
             3. Insert SD card into Orange Pi 3B
             4. Power on and connect to WiFi "coptra-XXXX" (password: coptrawifi)
             5. Access web interface at http://192.168.11.1
-            
-            ### Disk Space:
-            - **Minimum 12GB** available space for package installation
-            - **Auto-resized** to optimal size during build
-            - **ROS-ready** with adequate free space
-            
-            ### Package Installation:
-            You can now install additional packages via:
-            ```bash
-            sudo apt update
-            sudo apt install -y <your-packages>
-            ```
-            
-            ### Build Information:
-            - Built with GitHub Actions using larger runners
-            - Optimized disk space allocation
-            - Modern image resizing with improved error handling
-            - Multiple compression formats available
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Cleanup
-        if: always()
-        run: |
-          # Clean up temporary files
-          rm -rf /tmp/docker-builder
-          
-          # Show final disk usage
-          echo "Final disk usage after cleanup:"
-          df -h

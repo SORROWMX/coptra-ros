@@ -73,7 +73,7 @@ chmod +x builder/*.sh
 
 # Verify scripts are executable
 echo "Verifying builder scripts..."
-for script in builder/image-build.sh builder/image-chroot.sh builder/image-software.sh builder/image-network.sh builder/image-ros.sh builder/image-validate.sh builder/image-resize.sh builder/create-dirs.sh; do
+for script in builder/image-build.sh builder/image-chroot.sh builder/image-software.sh builder/image-network.sh builder/image-ros.sh builder/image-validate.sh builder/create-dirs.sh; do
     if [ -f "$script" ]; then
         echo "  ✓ $script"
     else

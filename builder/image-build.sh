@@ -151,7 +151,19 @@ get_image() {
 }
 
 get_image ${IMAGE_PATH} ${SOURCE_IMAGE}
-${BUILDER_DIR}/image-resize.sh ${IMAGE_PATH} 15G max
+
+# Resize image using goldarte/img-tool Docker image
+echo_stamp "Resizing image using goldarte/img-tool"
+if [ -d "/builder" ]; then
+    # Running in Docker - use img-resize command directly
+    img-resize ${IMAGE_PATH} max 7G
+else
+    # Running on VM - use Docker to run img-resize
+    docker run --privileged --rm \
+        -v /dev:/dev \
+        -v $(dirname ${IMAGE_PATH}):/mnt \
+        goldarte/img-tool:v0.5 img-resize /mnt/$(basename ${IMAGE_PATH}) max 7G
+fi
 
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/init_rpi.sh' '/root/'
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/hardware_setup.sh' '/root/'
