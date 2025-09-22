@@ -109,9 +109,16 @@ case "$COMMAND" in
         
         # Use QEMU for ARM64 emulation if available
         if [ -f "$TEMP_DIR/usr/bin/qemu-aarch64-static" ]; then
+            echo_stamp "Using QEMU to execute: $SCRIPT"
             chroot "$TEMP_DIR" /usr/bin/qemu-aarch64-static /bin/bash "$SCRIPT" "$@"
         else
-            chroot "$TEMP_DIR" /bin/bash "$SCRIPT" "$@"
+            # Try to find ARM64 bash in the chroot
+            if [ -f "$TEMP_DIR/bin/bash" ]; then
+                chroot "$TEMP_DIR" /bin/bash "$SCRIPT" "$@"
+            else
+                echo_stamp "Error: No suitable bash found in chroot" "ERROR"
+                exit 1
+            fi
         fi
         echo_stamp "Script execution complete"
         ;;
