@@ -16,6 +16,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build Orange Pi 3B Coptra image
         run: |
+          # Install required packages for image manipulation
+          sudo apt-get update
+          sudo apt-get install -y file parted e2fsprogs util-linux cloud-guest-utils gdisk qemu-utils
+          
           # Make scripts executable
           chmod +x builder/*.sh
           

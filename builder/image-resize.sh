@@ -152,14 +152,10 @@ elif [ -b "${LOOP_DEVICE}p1" ]; then
     echo_stamp "Found partition: $PARTITION_DEVICE"
 else
     echo_stamp "No partitions found, checking if entire device has filesystem"
-    if file -s "$LOOP_DEVICE" | grep -q "ext4\|ext3\|ext2"; then
-        PARTITION_DEVICE="$LOOP_DEVICE"
-        echo_stamp "Using entire device as filesystem: $PARTITION_DEVICE"
-    else
-        echo_stamp "Error: No partition or filesystem found"
-        losetup -d "$LOOP_DEVICE"
-        exit 1
-    fi
+    # Try to use the entire device as filesystem
+    echo_stamp "Attempting to use entire device as filesystem"
+    PARTITION_DEVICE="$LOOP_DEVICE"
+    echo_stamp "Using entire device as filesystem: $PARTITION_DEVICE"
 fi
 
 # Resize the partition (only if we have partitions)
@@ -213,18 +209,18 @@ echo_stamp "Resizing filesystem on: $PARTITION_DEVICE"
 echo_stamp "Filesystem size before resize:"
 df -h "$PARTITION_DEVICE" 2>/dev/null || echo "Cannot check filesystem size"
 
-# Check if the device has a filesystem
-if file -s "$PARTITION_DEVICE" | grep -q "ext4\|ext3\|ext2"; then
-    echo_stamp "Filesystem detected, resizing..."
-    if resize2fs "$PARTITION_DEVICE"; then
-        echo_stamp "Filesystem resized successfully"
-        echo_stamp "Filesystem size after resize:"
-        df -h "$PARTITION_DEVICE" 2>/dev/null || echo "Cannot check filesystem size"
-    else
-        echo_stamp "Warning: Filesystem resize failed, but continuing..."
-    fi
+# Check if the device has a filesystem and resize it
+echo_stamp "Attempting to resize filesystem..."
+if resize2fs "$PARTITION_DEVICE" 2>/dev/null; then
+    echo_stamp "Filesystem resized successfully"
+    echo_stamp "Filesystem size after resize:"
+    df -h "$PARTITION_DEVICE" 2>/dev/null || echo "Cannot check filesystem size"
 else
-    echo_stamp "No filesystem detected on $PARTITION_DEVICE, skipping resize"
+    echo_stamp "Warning: Filesystem resize failed, but continuing..."
+    # Try to check if it's a valid filesystem
+    if command -v file >/dev/null 2>&1; then
+        echo_stamp "Filesystem type: $(file -s "$PARTITION_DEVICE" 2>/dev/null || echo "unknown")"
+    fi
 fi
 
 # Clean up
