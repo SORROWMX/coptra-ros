@@ -18,7 +18,7 @@ jobs:
       - name: Setup build environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-user-static binfmt-support
+          sudo apt-get install -y qemu-user-static binfmt-support p7zip-full
           sudo docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
       
       - name: Build Orange Pi 3B Coptra image
@@ -28,8 +28,13 @@ jobs:
           chmod +x builder/image-*.sh
           chmod +x builder/assets/*.sh
           
-          # Verify script permissions
+          # Verify script permissions and structure
           ls -la builder/image-build.sh
+          echo "=== Directory structure ==="
+          ls -la builder/
+          ls -la builder/assets/
+          echo "=== Script content check ==="
+          head -20 builder/image-build.sh
           
           # Use custom Docker image with ARM64 emulation for Orange Pi
           docker run --privileged --rm \

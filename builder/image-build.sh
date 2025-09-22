@@ -60,19 +60,40 @@ IMAGE_PATH="${IMAGES_DIR}/${IMAGE_NAME}"
 get_image() {
   # TEMPLATE: get_image <IMAGE_PATH> <RPI_DONWLOAD_URL>
   local BUILD_DIR=$(dirname $1)
-  local RPI_ZIP_NAME=$(basename $2)
-  local RPI_IMAGE_NAME=$(echo ${RPI_ZIP_NAME} | sed 's/zip/img/')
+  local RPI_ARCHIVE_NAME=$(basename $2)
+  local RPI_IMAGE_NAME=$(echo ${RPI_ARCHIVE_NAME} | sed 's/\.7z$/.img/' | sed 's/\.zip$/.img/')
 
-  if [ ! -e "${BUILD_DIR}/${RPI_ZIP_NAME}" ]; then
+  if [ ! -e "${BUILD_DIR}/${RPI_ARCHIVE_NAME}" ]; then
     echo_stamp "Downloading original Linux distribution"
-    wget --progress=dot:giga -O ${BUILD_DIR}/${RPI_ZIP_NAME} $2
+    wget --progress=dot:giga -O ${BUILD_DIR}/${RPI_ARCHIVE_NAME} $2
     echo_stamp "Downloading complete" "SUCCESS" \
   else echo_stamp "Linux distribution already donwloaded"; fi
 
-  echo_stamp "Unzipping Linux distribution image" \
-  && unzip -p ${BUILD_DIR}/${RPI_ZIP_NAME} ${RPI_IMAGE_NAME} > $1 \
-  && echo_stamp "Unzipping complete" "SUCCESS" \
-  || (echo_stamp "Unzipping was failed!" "ERROR"; exit 1)
+  echo_stamp "Extracting Linux distribution image"
+  
+  # Check file extension and extract accordingly
+  if [[ ${RPI_ARCHIVE_NAME} == *.7z ]]; then
+    echo_stamp "Extracting 7z archive"
+    # Install 7zip if not available
+    which 7z >/dev/null 2>&1 || (apt-get update && apt-get install -y p7zip-full)
+    7z x ${BUILD_DIR}/${RPI_ARCHIVE_NAME} -o${BUILD_DIR}/ -y
+    # Find the extracted .img file
+    EXTRACTED_IMG=$(find ${BUILD_DIR}/ -name "*.img" -type f | head -1)
+    if [ -n "$EXTRACTED_IMG" ]; then
+      cp "$EXTRACTED_IMG" $1
+      echo_stamp "7z extraction complete" "SUCCESS"
+    else
+      echo_stamp "No .img file found in 7z archive!" "ERROR"
+      exit 1
+    fi
+  elif [[ ${RPI_ARCHIVE_NAME} == *.zip ]]; then
+    echo_stamp "Extracting zip archive"
+    unzip -p ${BUILD_DIR}/${RPI_ARCHIVE_NAME} ${RPI_IMAGE_NAME} > $1
+    echo_stamp "Zip extraction complete" "SUCCESS"
+  else
+    echo_stamp "Unsupported archive format: ${RPI_ARCHIVE_NAME}" "ERROR"
+    exit 1
+  fi
 }
 
 get_image ${IMAGE_PATH} ${SOURCE_IMAGE}
