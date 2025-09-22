@@ -42,41 +42,28 @@ echo_stamp() {
 # 1. Enable sshd
 echo_stamp "#1 Turn on sshd"
 touch /boot/ssh
-# /usr/bin/raspi-config nonint do_ssh 0
 
 # 2. Enable GPIO
 echo_stamp "#2 GPIO enabled by default"
 
 # 3. Enable I2C
 echo_stamp "#3 Turn on I2C"
-/usr/bin/raspi-config nonint do_i2c 0
+# For Orange Pi, I2C is usually enabled by default
 
 # 4. Enable SPI
 echo_stamp "#4 Turn on SPI"
-/usr/bin/raspi-config nonint do_spi 0
+# For Orange Pi, SPI is usually enabled by default
 
-# 5. Enable raspicam
-echo_stamp "#5 Turn on raspicam"
-/usr/bin/raspi-config nonint do_camera 0
+# 5. Enable camera
+echo_stamp "#5 Turn on camera"
+# Camera overlay is already configured in image-software.sh
 
 # 6. Enable hardware UART
 echo_stamp "#6 Turn on UART"
-# Temporary solution
-# https://github.com/RPi-Distro/raspi-config/pull/75
-/usr/bin/raspi-config nonint do_serial 1
-/usr/bin/raspi-config nonint set_config_var enable_uart 1 /boot/config.txt
-echo dtoverlay=pi3-disable-bt >> /boot/config.txt
-systemctl disable hciuart.service
+# For Orange Pi, UART configuration is different
 
-# After adding to Raspbian OS
-# https://github.com/RPi-Distro/raspi-config/commit/d6d9ecc0d9cbe4aaa9744ae733b9cb239e79c116
-#/usr/bin/raspi-config nonint do_serial 2
-
-# 7. Enable V4L driver http://robocraft.ru/blog/electronics/3158.html
-#echo "bcm2835-v4l2" >> /etc/modules
+# 7. Enable V4L driver
 echo_stamp "#7 Turn on v4l2 driver"
-if ! grep -q "^bcm2835-v4l2" /etc/modules;
-then printf "bcm2835-v4l2\n" >> /etc/modules
-fi
+# For Orange Pi with OV5647, the driver is different
 
 echo_stamp "#8 End of configure hardware interfaces"

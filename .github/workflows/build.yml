@@ -1,20 +1,13 @@
-name: Build
+name: Coptra ROS Packages Build
 
 on:
   push:
-    branches: [ '*' ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ mawefster ]
-  workflow_dwefispatch:
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
-  # melodic:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Native Melodic build
-  #       run: |
-  #         docker run --rm -v $(pwd):/root/catkin_ws/src/clover ros:melodic-ros-base /root/catkin_ws/src/clover/builder/standalone-install.sh
   noetic:
     runs-on: ubuntu-latest
     container: ros:noetic-ros-base
@@ -25,28 +18,88 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        path: catkin_ws/src/clover
-    - name: Install requirements
-      run: apt-get update && apt-get -y install python3-pip fakeroot python3-bloom debhelper dpkg-dev
-    - name: Install dependencies
-      run: rosdep update && rosdep install --from-paths src --ignore-src -y
+        path: catkin_ws/src/coptra
+    
+    - name: Install build requirements
+      run: |
+        apt-get update && apt-get -y install \
+          python3-pip \
+          fakeroot \
+          python3-bloom \
+          debhelper \
+          dpkg-dev \
+          python3-catkin-tools \
+          python3-rosdep \
+          python3-rosinstall \
+          python3-rosinstall-generator \
+          python3-wstool \
+          build-essential
+    
+    - name: Install Orange Pi specific dependencies
+      run: |
+        # Install packages needed for Orange Pi 3B
+        apt-get install -y \
+          python3-pigpio \
+          python3-rpi.gpio \
+          python3-opencv \
+          python3-numpy \
+          python3-yaml \
+          python3-tornado \
+          nginx \
+          fcgiwrap \
+          device-tree-compiler
+    
+    - name: Setup rosdep for Orange Pi
+      run: |
+        rosdep init || true
+        echo "yaml file:///etc/ros/rosdep/noetic-rosdep-coptra.yaml" >> /etc/ros/rosdep/sources.list.d/10-coptra.list
+        rosdep update --include-eol-distros
+    
+    - name: Install ROS dependencies
+      run: |
+        rosdep install --from-paths src --ignore-src -y --skip-keys="rpi_ws281x"
+    
     - name: Install GeographicLib datasets
-      run: wget -qO- https://raw.githubusercontent.com/mavlink/mavros/master/mavros/scripts/install_geographiclib_datasets.sh | bash
-    - name: catkin_make
-      run: source /opt/ros/$ROS_DISTRO/setup.bash && catkin_make
+      run: |
+        wget -qO- https://raw.githubusercontent.com/mavlink/mavros/master/mavros/scripts/install_geographiclib_datasets.sh | bash
+    
+    - name: Build ROS packages
+      run: |
+        source /opt/ros/$ROS_DISTRO/setup.bash
+        catkin build --cmake-args -DCMAKE_BUILD_TYPE=Release
+    
     - name: Run tests
-      run: source devel/setup.bash && catkin_make run_tests && catkin_test_results
+      run: |
+        source devel/setup.bash
+        catkin run_tests
+        catkin_test_results --verbose
+    
     - name: Build Debian packages
       run: |
         source devel/setup.bash
         for file in `find . -name "package.xml"`; do
           cd $(dirname ${file})
-          bloom-generate rosdebian --os-name ubuntu --os-version $(lsb_release -cs) --ros-distro $ROS_DISTRO  
+          bloom-generate rosdebian \
+            --os-name ubuntu \
+            --os-version $(lsb_release -cs) \
+            --ros-distro $ROS_DISTRO
           fakeroot debian/rules binary
           cd -
         done
-    - uses: actions/upload-artifact@v4
+    
+    - name: Upload Debian packages
+      uses: actions/upload-artifact@v4
       with:
-        name: debian-packages
-        path: catkin_ws/src/clover/*.deb
-        retention-days: 1
+        name: coptra-debian-packages
+        path: catkin_ws/src/coptra/*.deb
+        retention-days: 7
+    
+    - name: Upload build logs
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: build-logs
+        path: |
+          catkin_ws/logs/
+          /var/log/
+        retention-days: 3

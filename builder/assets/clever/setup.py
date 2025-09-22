@@ -2,9 +2,9 @@
 
 from distutils.core import setup
 
-setup(name='clever',
+setup(name='coptra',
       version='1.0',
-      description='Clever transitional package for backwards compatibility',
+      description='Coptra transitional package for backwards compatibility',
       author='Oleg Kalachev',
-      packages=['clever'],
+      packages=['coptra'],
      )

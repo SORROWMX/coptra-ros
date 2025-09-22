@@ -2,7 +2,7 @@
 Description=Launcher for the ROS master, parameter server and rosout logging node
 
 [Service]
-User=pi
+User=orangepi
 ExecStart=/bin/sh -c ". /opt/ros/noetic/setup.sh; ROS_HOSTNAME=`hostname`.local exec roscore"
 Restart=on-failure
 RestartSec=3

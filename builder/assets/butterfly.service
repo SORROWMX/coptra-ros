@@ -1,6 +1,13 @@
 [Unit]
 Description=Butterfly Terminal Server
+After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/butterfly.server.py --host="0.0.0.0" --unsecure
-User=pi
+Type=simple
+User=orangepi
+ExecStart=/home/orangepi/.local/bin/butterfly.server.py --host=0.0.0.0 --port=57575 --unsecure
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

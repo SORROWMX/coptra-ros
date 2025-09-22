@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>coptra</name>
-  <version>0.25.0</version>
+  <version>0.1</version>
   <description>The Coptra package</description>
 
   <maintainer email="maintainer@example.com">Package Maintainer</maintainer>

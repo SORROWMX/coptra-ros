@@ -34,22 +34,17 @@ echo_stamp() {
   echo -e ${TEXT}
 }
 
-echo_stamp "Write Clover information"
+echo_stamp "Write Coptra information"
 
-# Clover image version
-echo "$1" >> /etc/clover_version
+# Coptra image version
+echo "$1" >> /etc/coptra_version
 # Origin image file name
-echo "${2%.*}" >> /etc/clover_origin
+echo "${2%.*}" >> /etc/coptra_origin
 
 echo_stamp "Write magic script to /etc/rc.local"
 MAGIC_SCRIPT="sudo /root/init_rpi.sh; sudo sed -i '/sudo \\\/root\\\/init_rpi.sh/d' /etc/rc.local && sudo reboot"
 sed -i "19a${MAGIC_SCRIPT}" /etc/rc.local
 
-# It needs for autosizer.sh & maybe that is correct
-echo_stamp "Change boot partition"
-sed -i 's/root=[^ ]*/root=\/dev\/mmcblk0p2/' /boot/cmdline.txt
-sed -i 's/.*  \/boot           vfat    defaults          0       2$/\/dev\/mmcblk0p1  \/boot           vfat    defaults          0       2/' /etc/fstab
-sed -i 's/.*  \/               ext4    defaults,noatime  0       1$/\/dev\/mmcblk0p2  \/               ext4    defaults,noatime  0       1/' /etc/fstab
 
 echo_stamp "Set max space for syslogs"
 # https://unix.stackexchange.com/questions/139513/how-to-clear-journalctl

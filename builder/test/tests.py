@@ -22,12 +22,12 @@ from mavros_msgs.msg import State, StatusText, ExtendedState, RCIn, Mavlink
 from mavros_msgs.srv import CommandBool, CommandLong, SetMode
 
 from std_srvs.srv import Trigger
-from clover.srv import GetTelemetry, Navigate, NavigateGlobal, SetPosition, SetVelocity, \
+from coptra.srv import GetTelemetry, Navigate, NavigateGlobal, SetPosition, SetVelocity, \
     SetAttitude, SetRates, SetLEDEffect
 from led_msgs.srv import SetLEDs
 from led_msgs.msg import LEDStateArray, LEDState
 from aruco_pose.msg import Marker, MarkerArray, Point2D
-from clover import long_callback
+from coptra import long_callback
 
 import dynamic_reconfigure.client
 

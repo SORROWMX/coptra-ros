@@ -1,0 +1,103 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v0.25.0)'
+        required: true
+        type: string
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Create release notes
+        id: release_notes
+        run: |
+          # Generate changelog from git commits
+          CHANGELOG=$(git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD)
+          
+          # Create release notes
+          cat > release_notes.md << EOF
+          ## Coptra ${{ steps.version.outputs.VERSION }}
+          
+          ### Orange Pi 3B ROS Noetic Image
+          
+          **Features:**
+          - ROS Noetic for Orange Pi 3B (ARM64)
+          - WiFi Access Point mode (SSID: coptra-test, Password: coptrawifi)
+          - Web interface for network configuration
+          - OV5647 camera support with device tree overlay
+          - Butterfly terminal server for remote access
+          - Nginx web server with CGI support
+          - Network mode switching (AP/Client/Ethernet)
+          
+          **Installation:**
+          1. Download the image file
+          2. Flash to microSD card (minimum 8GB)
+          3. Insert SD card into Orange Pi 3B
+          4. Power on the device
+          5. Connect to WiFi "coptra-test" (password: coptrawifi)
+          6. Access web interface at http://192.168.11.1
+          
+          **Network Modes:**
+          - **Access Point**: Creates WiFi hotspot (default)
+          - **WiFi Client**: Connect to existing networks
+          - **Ethernet Only**: Use wired connection only
+          
+          **Web Interface:**
+          - Main dashboard: http://192.168.11.1
+          - WiFi settings: http://192.168.11.1/wifi.html
+          - Terminal access: http://192.168.11.1:57575
+          
+          ### Changes in this release:
+          $CHANGELOG
+          
+          ### System Requirements:
+          - Orange Pi 3B (ARM64)
+          - microSD card (8GB+)
+          - OV5647 camera module (optional)
+          - WiFi adapter (built-in)
+          
+          ### Support:
+          - GitHub Issues: [Report bugs or request features]
+          - Documentation: [Link to docs]
+          EOF
+          
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          cat release_notes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          release_name: Coptra ${{ steps.version.outputs.VERSION }}
+          body: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
+          draft: false
+          prerelease: false
+      
+      - name: Trigger image build
+        run: |
+          # This will trigger the build-image.yaml workflow
+          echo "Release created: ${{ steps.version.outputs.VERSION }}"
+          echo "Image build will be triggered automatically"

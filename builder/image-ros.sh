@@ -68,32 +68,24 @@ my_travis_retry() {
   return $result
 }
 
-# TODO: 'kinetic-rosdep-clover.yaml' should add only if we use our repo?
+# TODO: 'noetic-rosdep-coptra.yaml' should add only if we use our repo?
 echo_stamp "Init rosdep"
 my_travis_retry rosdep init
 # FIXME: Re-add this after missing packages are built
-echo "yaml file:///etc/ros/rosdep/${ROS_DISTRO}-rosdep-clover.yaml" >> /etc/ros/rosdep/sources.list.d/10-clover.list
-my_travis_retry rosdep update
+echo "yaml file:///etc/ros/rosdep/${ROS_DISTRO}-rosdep-coptra.yaml" >> /etc/ros/rosdep/sources.list.d/10-coptra.list
+my_travis_retry rosdep update --include-eol-distros
 
 echo_stamp "Populate rosdep for ROS user"
-my_travis_retry sudo -u pi rosdep update
+my_travis_retry sudo -u orangepi rosdep update --include-eol-distros
 
 export ROS_IP='127.0.0.1' # needed for running tests
 
-# echo_stamp "Reconfiguring Clover repository for simplier unshallowing"
-cd /home/pi/catkin_ws/src/clover
+# echo_stamp "Reconfiguring Coptra repository for simplier unshallowing"
+cd /home/orangepi/catkin_ws/src/coptra
 git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
 
-# This is sort of a hack to force "custom" packages to be installed - the ones built by COEX, linked against OpenCV 4.2
-# I **wish** OpenCV would not be such a mess, but, well, here we are.
-echo_stamp "Installing OpenCV 4.2-compatible ROS packages"
+echo_stamp "Installing additional ROS packages for Orange Pi"
 apt install -y --no-install-recommends \
-ros-${ROS_DISTRO}-compressed-image-transport=1.14.0-0buster \
-ros-${ROS_DISTRO}-cv-bridge=1.15.0-0buster \
-ros-${ROS_DISTRO}-cv-camera=0.5.1-0buster \
-ros-${ROS_DISTRO}-image-publisher=1.15.3-0buster \
-ros-${ROS_DISTRO}-web-video-server=0.2.1-0buster
-apt-mark hold \
 ros-${ROS_DISTRO}-compressed-image-transport \
 ros-${ROS_DISTRO}-cv-bridge \
 ros-${ROS_DISTRO}-cv-camera \
@@ -103,32 +95,24 @@ ros-${ROS_DISTRO}-web-video-server
 echo_stamp "Installing libboost-dev" # https://travis-ci.org/github/CopterExpress/clover/jobs/766318908#L6536
 my_travis_retry apt-get install -y --no-install-recommends libboost-dev libboost-all-dev
 
-echo_stamp "Build and install Clover"
-cd /home/pi/catkin_ws
+echo_stamp "Build and install Coptra"
+cd /home/orangepi/catkin_ws
 # Don't try to install gazebo_ros
-my_travis_retry rosdep install -y --from-paths src --ignore-src --rosdistro ${ROS_DISTRO} --os=debian:buster \
+my_travis_retry rosdep install -y --from-paths src --ignore-src --rosdistro ${ROS_DISTRO} --os=debian:bookworm \
   --skip-keys=gazebo_ros --skip-keys=gazebo_plugins
 my_travis_retry pip3 install wheel
-my_travis_retry pip3 install -r /home/pi/catkin_ws/src/clover/clover/requirements.txt
+my_travis_retry pip3 install -r /home/orangepi/catkin_ws/src/coptra/coptra/requirements.txt
 source /opt/ros/${ROS_DISTRO}/setup.bash
 # Don't build simulation plugins for actual drone
 catkin_make -j2 -DCMAKE_BUILD_TYPE=RelWithDebInfo
 source devel/setup.bash
 
 echo_stamp "Install clever package (for backwards compatibility)"
-cd /home/pi/catkin_ws/src/clover/builder/assets/clever
+cd /home/orangepi/catkin_ws/src/coptra/builder/assets/clever
 ./setup.py install
 rm -rf build  # remove build artifacts
 
-echo_stamp "Build Clover documentation"
-cd /home/pi/catkin_ws/src/clover
-builder/assets/install_gitbook.sh
-gitbook install
-gitbook build
-# replace assets copy to assets symlink to save space
-rm -rf _book/assets && ln -s ../docs/assets _book/assets
-touch node_modules/CATKIN_IGNORE docs/CATKIN_IGNORE _book/CATKIN_IGNORE clover/www/CATKIN_IGNORE apps/CATKIN_IGNORE # ignore documentation files by catkin
-
+cd /home/orangepi/catkin_ws/src/coptra
 echo_stamp "Installing additional ROS packages"
 my_travis_retry apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-rosbridge-suite \
@@ -149,37 +133,43 @@ echo_stamp "Install GeographicLib datasets (needed for mavros)" \
 && wget -qO- https://raw.githubusercontent.com/mavlink/mavros/master/mavros/scripts/install_geographiclib_datasets.sh | bash
 
 echo_stamp "Running tests"
-cd /home/pi/catkin_ws
+cd /home/orangepi/catkin_ws
 # FIXME: Investigate failing tests
 catkin_make run_tests #&& catkin_test_results
 
 echo_stamp "Change permissions for catkin_ws"
-chown -Rf pi:pi /home/pi/catkin_ws
+chown -Rf orangepi:orangepi /home/orangepi/catkin_ws
 
 echo_stamp "Update www"
-sudo -u pi sh -c ". devel/setup.sh && rosrun clover www"
+sudo -u orangepi sh -c ". devel/setup.sh && rosrun roswww_static update"
+
+echo_stamp "Setup nginx web files"
+# Copy files from roswww_static to nginx directory
+cp -r /home/orangepi/.ros/www/* /var/www/ros/
+chown -R www-data:www-data /var/www/ros/
+chmod -R 755 /var/www/ros/
 
 echo_stamp "Make \$HOME/examples symlink"
-ln -s "$(catkin_find clover examples --first-only)" /home/pi
-chown -Rf pi:pi /home/pi/examples
+ln -s "$(catkin_find coptra examples --first-only)" /home/orangepi
+chown -Rf orangepi:orangepi /home/orangepi/examples
 
 echo_stamp "Make systemd services symlinks"
-ln -s /home/pi/catkin_ws/src/clover/builder/assets/clover.service /lib/systemd/system/
-ln -s /home/pi/catkin_ws/src/clover/builder/assets/roscore.service /lib/systemd/system/
+ln -s /home/orangepi/catkin_ws/src/coptra/builder/assets/coptra.service /lib/systemd/system/
+ln -s /home/orangepi/catkin_ws/src/coptra/builder/assets/roscore.service /lib/systemd/system/
 # validate
-[ -f /lib/systemd/system/clover.service ]
+[ -f /lib/systemd/system/coptra.service ]
 [ -f /lib/systemd/system/roscore.service ]
 
 echo_stamp "Make udev rules symlink"
-ln -s "$(catkin_find clover udev --first-only)"/* /lib/udev/rules.d/
+ln -s "$(catkin_find coptra udev --first-only)"/* /lib/udev/rules.d/
 
 echo_stamp "Setup ROS environment"
-cat << EOF >> /home/pi/.bashrc
+cat << EOF >> /home/orangepi/.bashrc
 LANG='C.UTF-8'
 LC_ALL='C.UTF-8'
 export ROS_HOSTNAME=\`hostname\`.local
 source /opt/ros/${ROS_DISTRO}/setup.bash
-source /home/pi/catkin_ws/devel/setup.bash
+source /home/orangepi/catkin_ws/devel/setup.bash
 EOF
 
 #echo_stamp "Removing local apt mirror"

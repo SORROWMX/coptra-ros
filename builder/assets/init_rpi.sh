@@ -35,7 +35,7 @@ echo_stamp() {
   echo -e ${TEXT}
 }
 
-NEW_SSID='clover-'$(head -c 100 /dev/urandom | xxd -ps -c 100 | sed -e "s/[^0-9]//g" | cut -c 1-4)
+NEW_SSID='coptra-'$(head -c 100 /dev/urandom | xxd -ps -c 100 | sed -e "s/[^0-9]//g" | cut -c 1-4)
 echo_stamp "Setting SSID to ${NEW_SSID}"
 # TODO: Use wpa_cli insted direct file edit
 # FIXME: We rely on raspberrypi-net-mods to copy our file to /etc/wpa_supplicant.
@@ -46,7 +46,7 @@ update_config=1
 country=GB
 network={
     ssid="${NEW_SSID}"
-    psk="cloverwifi"
+    psk="coptrawifi"
     mode=2
     proto=WPA RSN
     key_mgmt=WPA-PSK
@@ -64,7 +64,8 @@ sed -i 's/127\.0\.1\.1.*/127.0.1.1\t'${NEW_HOSTNAME}' '${NEW_HOSTNAME}'.local/g'
 
 echo_stamp "Enable ROS services"
 systemctl enable roscore
-systemctl enable clover
+systemctl enable coptra
+systemctl enable nginx
 
 echo_stamp "Harware setup"
 /root/hardware_setup.sh

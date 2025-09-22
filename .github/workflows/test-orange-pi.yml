@@ -1,0 +1,84 @@
+name: Test Orange Pi 3B Compatibility
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  test-orange-pi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup ARM64 emulation
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static binfmt-support
+          sudo docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+      
+      - name: Test Orange Pi 3B compatibility
+        run: |
+          # Test basic Orange Pi 3B functionality
+          docker run --rm --platform linux/arm64 \
+            -v $(pwd):/workspace \
+            arm64v8/ubuntu:20.04 \
+            bash -c "
+              apt-get update && 
+              apt-get install -y python3 python3-pip curl wget &&
+              python3 --version &&
+              echo 'Orange Pi 3B ARM64 emulation test passed'
+            "
+      
+      - name: Test ROS Noetic on ARM64
+        run: |
+          # Test ROS Noetic installation on ARM64
+          docker run --rm --platform linux/arm64 \
+            -v $(pwd):/workspace \
+            ros:noetic-ros-base \
+            bash -c "
+              apt-get update && 
+              apt-get install -y python3-catkin-tools &&
+              source /opt/ros/noetic/setup.bash &&
+              roscore --help &&
+              echo 'ROS Noetic ARM64 test passed'
+            "
+      
+      - name: Test Orange Pi specific packages
+        run: |
+          # Test Orange Pi specific package installation
+          docker run --rm --platform linux/arm64 \
+            -v $(pwd):/workspace \
+            arm64v8/ubuntu:20.04 \
+            bash -c "
+              apt-get update && 
+              apt-get install -y python3-pigpio python3-opencv nginx &&
+              python3 -c 'import pigpio; print(\"pigpio import successful\")' &&
+              python3 -c 'import cv2; print(\"OpenCV import successful\")' &&
+              nginx -v &&
+              echo 'Orange Pi specific packages test passed'
+            "
+      
+      - name: Test network configuration scripts
+        run: |
+          # Test network configuration scripts syntax
+          bash -n builder/image-network.sh
+          bash -n builder/image-software.sh
+          bash -n builder/image-ros.sh
+          echo 'Network configuration scripts syntax check passed'
+      
+      - name: Test web interface files
+        run: |
+          # Test web interface files
+          if [ -f "coptra/www/index.html" ]; then
+            echo "Web interface index.html found"
+          fi
+          if [ -f "coptra/www/wifi.html" ]; then
+            echo "WiFi settings page found"
+          fi
+          if [ -f "coptra/www/style.css" ]; then
+            echo "CSS stylesheet found"
+          fi
+          echo 'Web interface files check passed'

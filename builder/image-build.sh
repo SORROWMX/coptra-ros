@@ -15,8 +15,8 @@
 
 set -e # Exit immidiately on non-zero result
 
-# https://www.raspberrypi.org/software/operating-systems/#raspberry-pi-os-32-bit
-SOURCE_IMAGE="https://downloads.raspberrypi.org/raspios_lite_armhf/images/raspios_lite_armhf-2021-05-28/2021-05-07-raspios-buster-armhf-lite.zip"
+# Orange Pi 3B Debian Bookworm image with ROS Noetic
+SOURCE_IMAGE="https://github.com/SORROWMX/orangepi3b-ros-noetic/releases/download/debian/Orangepi3b_1.0.8_debian_bookworm_server_linux5.10.160.7z"
 
 export DEBIAN_FRONTEND=${DEBIAN_FRONTEND:='noninteractive'}
 export LANG=${LANG:='C.UTF-8'}
@@ -77,8 +77,6 @@ get_image() {
 
 get_image ${IMAGE_PATH} ${SOURCE_IMAGE}
 
-# Make free space
-${BUILDER_DIR}/image-resize.sh ${IMAGE_PATH} max '7G'
 
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/init_rpi.sh' '/root/'
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/hardware_setup.sh' '/root/'
@@ -90,19 +88,17 @@ shopt -s dotglob
 for dir in ${REPO_DIR}/*; do
   # Don't try to copy image into itself
   if [[ $dir != *"images" && $dir != *"imgcache" ]]; then
-    ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy $dir '/home/pi/catkin_ws/src/clover/'
+    ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy $dir '/home/orangepi/catkin_ws/src/coptra/'
   fi;
 done
 
-# Monkey
-${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/monkey' '/root/'
+
 # rsyslog config
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/rsyslog.conf' '/etc'
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/rsysrot.sh' '/etc/rsyslog.d'
 # Butterfly
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/butterfly.service' '/lib/systemd/system/'
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/butterfly.socket' '/lib/systemd/system/'
-${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/monkey.service' '/lib/systemd/system/'
 # software install
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec ${SCRIPTS_DIR}'/image-software.sh'
 # network setup
@@ -110,14 +106,12 @@ ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec ${SCRIPTS_DIR}'/image-network.
 # avahi setup
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/avahi-services/sftp-ssh.service' '/etc/avahi/services'
 
-# If RPi then use a one thread to build a ROS package on RPi, else use all
-[[ $(arch) == 'armv7l' ]] && NUMBER_THREADS=1 || NUMBER_THREADS=$(nproc --all)
-# Clover
-${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/noetic-rosdep-clover.yaml' '/etc/ros/rosdep/'
+
+# Coptra (Clover for Orange Pi)
+${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/noetic-rosdep-coptra.yaml' '/etc/ros/rosdep/'
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/ros_python_paths' '/etc/sudoers.d/'
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/pigpiod.service' '/lib/systemd/system/'
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/launch.nanorc' '/usr/share/nano/'
-# ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/kinetic-ros-clover.rosinstall' '/home/pi/ros_catkin_ws/'
 # Add rename script
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec ${SCRIPTS_DIR}'/image-ros.sh' ${REPO_URL} ${IMAGE_VERSION} false false ${NUMBER_THREADS}
 ${BUILDER_DIR}/image-chroot.sh ${IMAGE_PATH} exec ${SCRIPTS_DIR}'/image-validate.sh'
