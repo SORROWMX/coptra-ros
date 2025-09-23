@@ -86,6 +86,13 @@ my_travis_retry apt-get install -y dhcpcd5 || {
 echo_stamp "Configuring SSH for orangepi user"
 # Enable SSH by creating /boot/ssh file (works for Orange Pi)
 touch /boot/ssh
+# Update sources.list for Debian Bookworm
+echo "deb http://deb.debian.org/debian bookworm main contrib non-free
+deb http://deb.debian.org/debian bookworm-updates main contrib non-free
+deb http://security.debian.org/debian-security bookworm-security main contrib non-free" > /etc/apt/sources.list
+
+# Remove docker.list if exists
+rm -f /etc/apt/sources.list.d/docker.list
 
 # Install and configure SSH server
 my_travis_retry apt-get install -y openssh-server
@@ -138,13 +145,6 @@ df -h
 
 echo_stamp "Install apt keys & repos"
 
-# Update sources.list for Debian Bookworm
-echo "deb http://deb.debian.org/debian bookworm main contrib non-free
-deb http://deb.debian.org/debian bookworm-updates main contrib non-free
-deb http://security.debian.org/debian-security bookworm-security main contrib non-free" > /etc/apt/sources.list
-
-# Remove docker.list if exists
-rm -f /etc/apt/sources.list.d/docker.list
 
 # Install dirmngr and setup Orange Pi ROS repository
 my_travis_retry apt-get update
