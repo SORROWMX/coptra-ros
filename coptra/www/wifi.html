@@ -1,303 +1,91 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<title>Coptra WiFi Settings</title>
+	<title>Настройки WiFi - Coptra</title>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="style.css">
 	<link rel="icon" href="data:,">
-	<style>
-		.wifi-dashboard {
-			background: rgba(255, 255, 255, 0.1);
-			backdrop-filter: blur(20px);
-			border-radius: 24px;
-			padding: 40px;
-			margin: 20px 0;
-			border: 1px solid rgba(255, 255, 255, 0.2);
-			box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
-		}
-		
-		.mode-selector {
-			display: grid;
-			grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-			gap: 20px;
-			margin: 30px 0;
-		}
-		
-		.mode-card {
-			background: rgba(255, 255, 255, 0.1);
-			backdrop-filter: blur(15px);
-			border-radius: 16px;
-			padding: 25px;
-			border: 2px solid rgba(255, 255, 255, 0.2);
-			transition: all 0.4s ease;
-			cursor: pointer;
-			position: relative;
-			overflow: hidden;
-		}
-		
-		.mode-card::before {
-			content: '';
-			position: absolute;
-			top: 0;
-			left: 0;
-			right: 0;
-			height: 4px;
-			background: linear-gradient(90deg, var(--color-accent-green), var(--color-accent-yellow));
-			transform: scaleX(0);
-			transition: transform 0.3s ease;
-		}
-		
-		.mode-card:hover::before {
-			transform: scaleX(1);
-		}
-		
-		.mode-card:hover {
-			transform: translateY(-5px);
-			background: rgba(255, 255, 255, 0.15);
-			border-color: rgba(255, 255, 255, 0.4);
-		}
-		
-		.mode-card.active {
-			border-color: var(--color-accent-green);
-			background: rgba(76, 175, 80, 0.1);
-		}
-		
-		.mode-card.active::before {
-			transform: scaleX(1);
-		}
-		
-		.mode-icon {
-			font-size: 2.5rem;
-			margin-bottom: 15px;
-			display: block;
-		}
-		
-		.mode-title {
-			font-size: 1.3rem;
-			font-weight: 600;
-			margin-bottom: 10px;
-			color: var(--color-text-light);
-		}
-		
-		.mode-description {
-			color: rgba(255, 255, 255, 0.8);
-			font-size: 0.9rem;
-			line-height: 1.5;
-			margin-bottom: 15px;
-		}
-		
-		.mode-status {
-			font-size: 0.8rem;
-			padding: 5px 12px;
-			border-radius: 20px;
-			background: rgba(255, 255, 255, 0.1);
-			display: inline-block;
-		}
-		
-		.mode-status.active {
-			background: var(--color-accent-green);
-			color: white;
-		}
-		
-		.mode-status.inactive {
-			background: rgba(255, 255, 255, 0.2);
-			color: rgba(255, 255, 255, 0.7);
-		}
-		
-		.status-grid {
-			display: grid;
-			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-			gap: 20px;
-			margin: 30px 0;
-		}
-		
-		.status-card {
-			background: rgba(255, 255, 255, 0.1);
-			backdrop-filter: blur(15px);
-			border-radius: 16px;
-			padding: 20px;
-			text-align: center;
-			border: 1px solid rgba(255, 255, 255, 0.2);
-		}
-		
-		.status-label {
-			font-size: 0.9rem;
-			color: rgba(255, 255, 255, 0.8);
-			margin-bottom: 8px;
-		}
-		
-		.status-value {
-			font-size: 1.5rem;
-			font-weight: 600;
-			color: var(--color-accent-yellow);
-		}
-		
-		.controls-section {
-			margin-top: 30px;
-			padding-top: 30px;
-			border-top: 1px solid rgba(255, 255, 255, 0.1);
-		}
-		
-		.control-buttons {
-			display: flex;
-			gap: 15px;
-			flex-wrap: wrap;
-			justify-content: center;
-		}
-		
-		.control-btn {
-			background: rgba(255, 255, 255, 0.1);
-			backdrop-filter: blur(10px);
-			color: var(--color-text-light);
-			border: 2px solid rgba(255, 255, 255, 0.2);
-			padding: 12px 24px;
-			border-radius: 12px;
-			font-weight: 600;
-			text-decoration: none;
-			display: flex;
-			align-items: center;
-			gap: 8px;
-			transition: all 0.4s ease;
-			cursor: pointer;
-			font-size: 0.9rem;
-		}
-		
-		.control-btn:hover {
-			background: rgba(255, 255, 255, 0.2);
-			border-color: rgba(255, 255, 255, 0.4);
-			transform: translateY(-2px);
-			color: var(--color-text-light);
-			text-decoration: none;
-		}
-		
-		.control-btn.primary {
-			background: var(--color-accent-green);
-			border-color: var(--color-accent-green);
-		}
-		
-		.control-btn.primary:hover {
-			background: #4caf50;
-			border-color: #4caf50;
-		}
-		
-		.control-btn.danger {
-			background: var(--color-error);
-			border-color: var(--color-error);
-		}
-		
-		.control-btn.danger:hover {
-			background: #d32f2f;
-			border-color: #d32f2f;
-		}
-		
-		.loading {
-			opacity: 0.6;
-			pointer-events: none;
-		}
-		
-		.notification {
-			position: fixed;
-			top: 20px;
-			right: 20px;
-			background: rgba(255, 255, 255, 0.1);
-			backdrop-filter: blur(20px);
-			border-radius: 12px;
-			padding: 15px 20px;
-			border: 1px solid rgba(255, 255, 255, 0.2);
-			color: var(--color-text-light);
-			font-weight: 500;
-			transform: translateX(400px);
-			transition: transform 0.3s ease;
-			z-index: 1000;
-		}
-		
-		.notification.show {
-			transform: translateX(0);
-		}
-		
-		.notification.success {
-			border-color: var(--color-accent-green);
-			background: rgba(76, 175, 80, 0.1);
-		}
-		
-		.notification.error {
-			border-color: var(--color-error);
-			background: rgba(211, 47, 47, 0.1);
-		}
-	</style>
 </head>
 <body>
+	<div class="header">
+		<h1><img src="coptra_icon_128.png" alt="Coptra"> Coptra Drone Kit</h1>
+		<div class="subtitle">Продвинутые инструменты управления и мониторинга дрона</div>
+	</div>
+
 	<div class="container">
 		<div class="wifi-dashboard">
-			<h1>📶 WiFi Settings</h1>
-			<div class="subtitle">Configure network modes and connectivity options</div>
+			<div class="page-header">
+				<h1 class="page-title">📶 Настройки WiFi</h1>
+				<a href="index.html" class="back-btn">← Назад</a>
+			</div>
+			<div class="page-subtitle">Настройка сетевых режимов и параметров подключения</div>
 			
 			<div class="status-grid">
 				<div class="status-card">
-					<div class="status-label">Current Mode</div>
-					<div class="status-value" id="current-mode">Loading...</div>
+					<div class="status-label">Текущий режим</div>
+					<div class="status-value" id="current-mode">Загрузка...</div>
 				</div>
 				<div class="status-card">
-					<div class="status-label">WiFi Interface</div>
-					<div class="status-value" id="wifi-status">Loading...</div>
+					<div class="status-label">WiFi интерфейс</div>
+					<div class="status-value" id="wifi-status">Загрузка...</div>
 				</div>
 				<div class="status-card">
 					<div class="status-label">Ethernet</div>
-					<div class="status-value" id="eth-status">Loading...</div>
+					<div class="status-value" id="eth-status">Загрузка...</div>
 				</div>
 				<div class="status-card">
-					<div class="status-label">IP Address</div>
-					<div class="status-value" id="ip-address">Loading...</div>
+					<div class="status-label">IP адрес</div>
+					<div class="status-value" id="ip-address">Загрузка...</div>
 				</div>
 			</div>
 			
 			<div class="mode-selector">
 				<div class="mode-card" data-mode="ap" onclick="switchMode('ap')">
 					<span class="mode-icon">📡</span>
-					<div class="mode-title">Access Point</div>
+					<div class="mode-title">Точка доступа</div>
 					<div class="mode-description">
-						Create a WiFi hotspot for other devices to connect to.
-						SSID: <span id="current-ssid-display">coptra-XXXX</span>, Password: coptrawifi
+						Создать WiFi хотспот для подключения других устройств.
+						SSID: <span id="current-ssid-display">coptra-XXXX</span>, Пароль: coptrawifi
 					</div>
-					<span class="mode-status inactive" id="ap-status">Inactive</span>
+					<span class="mode-status inactive" id="ap-status">Неактивен</span>
 				</div>
 				
 				<div class="mode-card" data-mode="client" onclick="switchMode('client')">
 					<span class="mode-icon">📶</span>
-					<div class="mode-title">WiFi Client</div>
+					<div class="mode-title">WiFi клиент</div>
 					<div class="mode-description">
-						Connect to existing WiFi networks using NetworkManager.
-						Use system settings to configure connections.
+						Подключение к существующим WiFi сетям через NetworkManager.
+						Используйте системные настройки для конфигурации подключений.
 					</div>
-					<span class="mode-status inactive" id="client-status">Inactive</span>
+					<span class="mode-status inactive" id="client-status">Неактивен</span>
 				</div>
 				
 				<div class="mode-card" data-mode="eth0" onclick="switchMode('eth0')">
 					<span class="mode-icon">🔌</span>
-					<div class="mode-title">Ethernet Only</div>
+					<div class="mode-title">Только Ethernet</div>
 					<div class="mode-description">
-						Disable WiFi and use only Ethernet connection.
-						Useful for wired-only environments.
+						Отключить WiFi и использовать только Ethernet подключение.
+						Полезно для проводных сред.
 					</div>
-					<span class="mode-status inactive" id="eth0-status">Inactive</span>
+					<span class="mode-status inactive" id="eth0-status">Неактивен</span>
 				</div>
 			</div>
 			
 			<div class="controls-section">
-				<h3 style="text-align: center; margin-bottom: 20px; color: var(--color-text-light);">Quick Actions</h3>
+				<h3 style="text-align: center; margin-bottom: 20px; color: #333;">Быстрые действия</h3>
 				<div class="control-buttons">
 					<button class="control-btn" onclick="refreshStatus()">
 						<span>🔄</span>
-						<span>Refresh Status</span>
+						<span>Обновить статус</span>
 					</button>
 					<button class="control-btn" onclick="showNetworkInfo()">
 						<span>ℹ️</span>
-						<span>Network Info</span>
+						<span>Информация о сети</span>
 					</button>
 					<button class="control-btn primary" onclick="restartServices()">
 						<span>⚡</span>
-						<span>Restart Services</span>
+						<span>Перезапустить сервисы</span>
 					</button>
 				</div>
 			</div>
@@ -323,14 +111,14 @@
 		// Switch network mode
 		async function switchMode(mode) {
 			if (mode === currentMode) {
-				showNotification('Already in ' + mode + ' mode', 'info');
+				showNotification('Уже в режиме ' + mode, 'info');
 				return;
 			}
 			
-			showNotification('Switching to ' + mode + ' mode...', 'info');
+			showNotification('Переключение в режим ' + mode + '...', 'info');
 			
 			try {
-				const response = await fetch('/cgi-bin/network-switch', {
+				const response = await fetch('./cgi-bin/network-switch', {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
@@ -338,28 +126,39 @@
 					body: JSON.stringify({ mode: mode })
 				});
 				
-				if (response.ok) {
-					showNotification('Successfully switched to ' + mode + ' mode', 'success');
-					setTimeout(refreshStatus, 2000);
-				} else {
-					throw new Error('Failed to switch mode');
+				if (!response.ok) {
+					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 				}
+				
+				showNotification('Успешно переключено в режим ' + mode, 'success');
+				setTimeout(refreshStatus, 2000);
+				
 			} catch (error) {
-				showNotification('Error switching mode: ' + error.message, 'error');
+				// Only show error notification if it's not a network error
+				if (!error.message.includes('NetworkError') && !error.message.includes('fetch')) {
+					showNotification('Ошибка переключения режима: ' + error.message, 'error');
+				} else {
+					showNotification('Сетевая ошибка. Проверьте подключение.', 'error');
+				}
 			}
 		}
 		
 		// Refresh status
 		async function refreshStatus() {
 			try {
-				const response = await fetch('/cgi-bin/network-status');
+				const response = await fetch('./cgi-bin/network-status');
+				
+				if (!response.ok) {
+					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+				}
+				
 				const data = await response.json();
 				
 				// Update status display
-				document.getElementById('current-mode').textContent = data.currentMode || 'Unknown';
-				document.getElementById('wifi-status').textContent = data.wifiStatus || 'Unknown';
-				document.getElementById('eth-status').textContent = data.ethStatus || 'Unknown';
-				document.getElementById('ip-address').textContent = data.ipAddress || 'Unknown';
+				document.getElementById('current-mode').textContent = data.currentMode || 'Неизвестно';
+				document.getElementById('wifi-status').textContent = data.wifiStatus || 'Неизвестно';
+				document.getElementById('eth-status').textContent = data.ethStatus || 'Неизвестно';
+				document.getElementById('ip-address').textContent = data.ipAddress || 'Неизвестно';
 				
 				// Update SSID display
 				if (data.currentSSID && data.currentSSID !== 'unknown') {
@@ -372,7 +171,7 @@
 					const status = card.querySelector('.mode-status');
 					status.classList.remove('active');
 					status.classList.add('inactive');
-					status.textContent = 'Inactive';
+					status.textContent = 'Неактивен';
 				});
 				
 				if (data.currentMode) {
@@ -382,58 +181,82 @@
 						const status = activeCard.querySelector('.mode-status');
 						status.classList.remove('inactive');
 						status.classList.add('active');
-						status.textContent = 'Active';
+						status.textContent = 'Активен';
 					}
 				}
 				
 				currentMode = data.currentMode || 'unknown';
 				
 			} catch (error) {
-				showNotification('Error refreshing status: ' + error.message, 'error');
+				// Set default values when network fails
+				document.getElementById('current-mode').textContent = 'Офлайн';
+				document.getElementById('wifi-status').textContent = 'Недоступно';
+				document.getElementById('eth-status').textContent = 'Недоступно';
+				document.getElementById('ip-address').textContent = 'Недоступно';
+				
+				// Reset all mode cards to inactive
+				document.querySelectorAll('.mode-card').forEach(card => {
+					card.classList.remove('active');
+					const status = card.querySelector('.mode-status');
+					status.classList.remove('active');
+					status.classList.add('inactive');
+					status.textContent = 'Неактивен';
+				});
+				
+				// Only show error notification if it's not a network error
+				if (!error.message.includes('NetworkError') && !error.message.includes('fetch')) {
+					showNotification('Ошибка обновления статуса: ' + error.message, 'error');
+				}
 			}
 		}
 		
 		// Show network information
 		function showNetworkInfo() {
 			const info = `
-Network Configuration:
-- Access Point SSID: ${data.currentSSID || 'coptra-XXXX'}
-- Access Point Password: coptrawifi
-- Access Point IP: 192.168.11.1
-- Web Interface: http://192.168.11.1
-- Terminal Access: http://192.168.11.1:57575
-- Camera Stream: http://192.168.11.1:8080
+Конфигурация сети:
+- SSID точки доступа: ${data.currentSSID || 'coptra-XXXX'}
+- Пароль точки доступа: coptrawifi
+- IP точки доступа: 192.168.11.1
+- Веб интерфейс: http://192.168.11.1
+- Терминальный доступ: http://192.168.11.1:57575
+- Видеопоток: http://192.168.11.1:8080
 
-Available Commands:
-- network-switch ap     # Start WiFi hotspot
-- network-switch client # Connect to WiFi network
-- network-switch eth0   # Use only Ethernet
-- network-switch status # Show current status
+Доступные команды:
+- network-switch ap     # Запустить WiFi хотспот
+- network-switch client # Подключиться к WiFi сети
+- network-switch eth0   # Использовать только Ethernet
+- network-switch status # Показать текущий статус
 			`;
 			alert(info);
 		}
 		
 		// Restart network services
 		async function restartServices() {
-			if (!confirm('This will restart all network services. Continue?')) {
+			if (!confirm('Это перезапустит все сетевые сервисы. Продолжить?')) {
 				return;
 			}
 			
-			showNotification('Restarting network services...', 'info');
+			showNotification('Перезапуск сетевых сервисов...', 'info');
 			
 			try {
-				const response = await fetch('/cgi-bin/restart-network', {
+				const response = await fetch('./cgi-bin/restart-network', {
 					method: 'POST'
 				});
 				
-				if (response.ok) {
-					showNotification('Network services restarted successfully', 'success');
-					setTimeout(refreshStatus, 3000);
-				} else {
-					throw new Error('Failed to restart services');
+				if (!response.ok) {
+					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 				}
+				
+				showNotification('Сетевые сервисы успешно перезапущены', 'success');
+				setTimeout(refreshStatus, 3000);
+				
 			} catch (error) {
-				showNotification('Error restarting services: ' + error.message, 'error');
+				// Only show error notification if it's not a network error
+				if (!error.message.includes('NetworkError') && !error.message.includes('fetch')) {
+					showNotification('Ошибка перезапуска сервисов: ' + error.message, 'error');
+				} else {
+					showNotification('Сетевая ошибка. Проверьте подключение.', 'error');
+				}
 			}
 		}
 		

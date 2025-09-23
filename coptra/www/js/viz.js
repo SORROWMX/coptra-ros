@@ -4,20 +4,36 @@ var ros = new ROSLIB.Ros({
 
 var titleEl = document.querySelector('title');
 
+// DOM elements for status updates
+var vizStatus = document.getElementById('viz-status');
+var loadingViz = document.getElementById('loading-viz');
+var vizError = document.getElementById('viz-error');
+
 ros.on('error', function(error) {
 	titleEl.innerText = 'Disconnected';
-	err = error;
-	alert('Connection error: please enable \'rosbridge\' in coptra.launch!');
+	vizStatus.textContent = '❌ Ошибка подключения к ROS';
+	vizStatus.className = 'viz-status disconnected';
+	loadingViz.style.display = 'none';
+	vizError.style.display = 'block';
+	console.error('ROS connection error:', error);
 });
 
 ros.on('connection', function() {
 	console.log('connected');
 	titleEl.innerText = 'Connected';
+	vizStatus.textContent = '✅ Подключено к ROS';
+	vizStatus.className = 'viz-status connected';
+	loadingViz.style.display = 'none';
+	vizError.style.display = 'none';
 });
 
 ros.on('close', function() {
 	console.log('disconnected');
 	titleEl.innerText = 'Disconnected';
+	vizStatus.textContent = '❌ Отключено от ROS';
+	vizStatus.className = 'viz-status disconnected';
+	loadingViz.style.display = 'block';
+	loadingViz.textContent = 'Переподключение...';
 });
 
 var viewer, tfClient;
@@ -92,3 +108,58 @@ function addArucoMap() {
 		rootObject: viewer.scene
 	});
 }
+
+// Control functions for buttons
+function resetView() {
+	if (viewer && viewer.camera) {
+		viewer.camera.position.set(0, 0, 10);
+		viewer.camera.lookAt(0, 0, 0);
+		viewer.camera.updateProjectionMatrix();
+	}
+}
+
+function toggleGrid() {
+	// Toggle grid visibility
+	if (viewer && viewer.scene) {
+		// Implementation for grid toggle
+		console.log('Grid toggled');
+	}
+}
+
+function toggleAxes() {
+	// Toggle axes visibility
+	if (viewer && viewer.scene) {
+		// Implementation for axes toggle
+		console.log('Axes toggled');
+	}
+}
+
+function toggleTrajectory() {
+	// Toggle trajectory visibility
+	if (viewer && viewer.scene) {
+		// Implementation for trajectory toggle
+		console.log('Trajectory toggled');
+	}
+}
+
+// Initialize control buttons when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+	// Add event listeners for control buttons
+	var resetBtn = document.getElementById('reset-view');
+	var gridBtn = document.getElementById('toggle-grid');
+	var axesBtn = document.getElementById('toggle-axes');
+	var trajectoryBtn = document.getElementById('toggle-trajectory');
+	
+	if (resetBtn) {
+		resetBtn.addEventListener('click', resetView);
+	}
+	if (gridBtn) {
+		gridBtn.addEventListener('click', toggleGrid);
+	}
+	if (axesBtn) {
+		axesBtn.addEventListener('click', toggleAxes);
+	}
+	if (trajectoryBtn) {
+		trajectoryBtn.addEventListener('click', toggleTrajectory);
+	}
+});

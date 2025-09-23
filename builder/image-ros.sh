@@ -94,13 +94,6 @@ safe_install() {
 
 export ROS_IP='127.0.0.1' # needed for running tests
 
-# Clone SORROWMX/coptra-ros repository if not exists
-if [ ! -d "/home/orangepi/catkin_ws/src/coptra-ros" ]; then
-    echo_stamp "Cloning SORROWMX/coptra-ros repository"
-    cd /home/orangepi/catkin_ws/src
-    git clone https://github.com/SORROWMX/coptra-ros.git
-    cd /home/orangepi/catkin_ws
-fi
 
 
 

@@ -1,63 +1,426 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<title>Coptra System Console</title>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<link rel="stylesheet" href="style.css">
-	<link rel="icon" href="data:,">
+    <title>Системная Консоль - Coptra</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:,">
+    <style>
+        .console-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .console-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .console-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #333;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .console-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .console-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .console-btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .console-btn.secondary {
+            background: #6c757d;
+        }
+        
+        .console-btn.secondary:hover {
+            background: #5a6268;
+        }
+        
+        .console-log {
+            background: #1e1e1e;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 600px;
+            overflow-y: auto;
+            margin: 0;
+            border: 1px solid #333;
+        }
+        
+        .console-log::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .console-log::-webkit-scrollbar-track {
+            background: #2d2d2d;
+            border-radius: 4px;
+        }
+        
+        .console-log::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+        
+        .console-log::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+        
+        .loading-console {
+            text-align: center;
+            color: #667eea;
+            padding: 40px 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .loading-console::before {
+            content: '';
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .console-error {
+            text-align: center;
+            color: #dc3545;
+            padding: 40px 20px;
+            font-weight: 600;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .console-error::before {
+            content: '⚠️';
+            display: block;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .console-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+            font-size: 0.9em;
+            color: #495057;
+        }
+        
+        .stat-label {
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .stat-value {
+            color: #333;
+            font-weight: 700;
+        }
+        
+        /* Page header styles */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .page-title-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            flex: 1;
+        }
+        
+        .page-title {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 1.8em;
+            font-weight: 700;
+        }
+        
+        .page-subtitle {
+            color: #666;
+            margin: 0;
+            font-size: 1.1em;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .console-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
+            
+            .console-actions {
+                justify-content: center;
+            }
+            
+            .console-stats {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .page-header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .page-title-container {
+                order: 1;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .console-container {
+                padding: 15px;
+            }
+            
+            .console-btn {
+                padding: 6px 12px;
+                font-size: 0.85em;
+            }
+            
+            .page-title {
+                font-size: 1.5em;
+            }
+            
+            .page-subtitle {
+                font-size: 1em;
+            }
+        }
+    </style>
 </head>
 <body>
-	<div class="container">
-		<h1>📝 System Console</h1>
-		<div class="subtitle">Real-time system logs and diagnostics</div>
-		
-		<div class="console-header">
-			<h2 class="console-title">/var/log/coptra.log</h2>
-			<a class="download-link" href="coptra.log" download>📥 Download Log</a>
-		</div>
-		
-		<div class="card">
-			<pre id="log-content">Loading logs...</pre>
-		</div>
-	</div>
+    <div class="header">
+        <h1><img src="coptra_icon_128.png" alt="Coptra"> Coptra Drone Kit</h1>
+        <div class="subtitle">Продвинутые инструменты управления и мониторинга дрона</div>
+    </div>
 
-	<script type="module">
-		var pre = document.querySelector('#log-content');
+    <div class="container">
+        <div class="page-header">
+            <div class="page-title-container">
+                <h1 class="page-title">📝 Системная Консоль</h1>
+                <div class="page-subtitle">Системные логи и диагностика</div>
+            </div>
+            <a href="index.html" class="back-btn">← Назад</a>
+        </div>
+        
+        <div class="console-container">
+            <div class="console-header">
+                <h2 class="console-title">
+                    📄 /var/log/clover.log
+                </h2>
+                <div class="console-actions">
+                    <a href="clover.log" download class="console-btn">
+                        📥 Скачать лог
+                    </a>
+                    <button class="console-btn secondary" id="refresh-log">
+                        🔄 Обновить
+                    </button>
+                    <button class="console-btn secondary" id="clear-console">
+                        🗑️ Очистить
+                    </button>
+                </div>
+            </div>
+            
+            <div class="console-stats">
+                <div class="stat-item">
+                    <span class="stat-label">Размер файла:</span>
+                    <span class="stat-value" id="file-size">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Последнее обновление:</span>
+                    <span class="stat-value" id="last-update">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Строк в логе:</span>
+                    <span class="stat-value" id="line-count">-</span>
+                </div>
+            </div>
+            
+            <div class="loading-console" id="loading-console">Загрузка логов...</div>
+            <div class="console-error" id="console-error" style="display: none;">
+                Ошибка загрузки логов
+            </div>
+            <pre class="console-log" id="console-log" style="display: none;"></pre>
+        </div>
+    </div>
 
-		function loadLogs() {
-			fetch('coptra.log?' + Math.random()).then(function(response) { // random to forbid caching
-				if (response.status == 404) {
-					pre.innerHTML = '⚠️ Log file /var/log/coptra.log does not exist\n\nThis might be normal if the system just started or logs are stored elsewhere.';
-					pre.className = 'error-message';
-					return;
-				} else if (response.status !== 200) {
-					pre.innerHTML = '❌ Error loading logs (Status: ' + response.status + ')';
-					pre.className = 'error-message';
-					return;
-				}
-				response.text().then(function(content) {
-					if (content.trim() === '') {
-						pre.innerHTML = '📋 Log file is empty\n\nNo log entries found.';
-					} else {
-						pre.innerHTML = content;
-					}
-					pre.className = '';
-					
-					// Auto-scroll to bottom
-					pre.scrollTop = pre.scrollHeight;
-				});
-			}).catch(function(error) {
-				pre.innerHTML = '🔌 Connection error: Unable to load logs\n\nPlease check your network connection.';
-				pre.className = 'error-message';
-			});
-		}
+    <div class="notification" id="notification"></div>
 
-		// Load logs initially
-		loadLogs();
-		
-		// Auto-refresh every 5 seconds
-		setInterval(loadLogs, 5000);
-	</script>
+    <script type="module">
+        // DOM elements
+        const loadingConsole = document.getElementById('loading-console');
+        const consoleError = document.getElementById('console-error');
+        const consoleLog = document.getElementById('console-log');
+        const notification = document.getElementById('notification');
+        const fileSize = document.getElementById('file-size');
+        const lastUpdate = document.getElementById('last-update');
+        const lineCount = document.getElementById('line-count');
+        
+        // Show notification
+        function showNotification(message, type = 'info') {
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // Load console log
+        function loadConsoleLog() {
+            loadingConsole.style.display = 'flex';
+            consoleError.style.display = 'none';
+            consoleLog.style.display = 'none';
+            
+            fetch('clover.log?' + Math.random())
+                .then(function(response) {
+                    if (response.status === 404) {
+                        consoleError.textContent = 'Файл /var/log/clover.log не найден';
+                        consoleError.style.display = 'block';
+                        loadingConsole.style.display = 'none';
+                        showNotification('Файл логов не найден', 'error');
+                        return;
+                    } else if (response.status !== 200) {
+                        consoleError.textContent = 'Ошибка ' + response.status;
+                        consoleError.style.display = 'block';
+                        loadingConsole.style.display = 'none';
+                        showNotification('Ошибка загрузки логов: ' + response.status, 'error');
+                        return;
+                    }
+                    
+                    return response.text();
+                })
+                .then(function(content) {
+                    if (content !== undefined) {
+                        loadingConsole.style.display = 'none';
+                        consoleLog.textContent = content;
+                        consoleLog.style.display = 'block';
+                        
+                        // Update stats
+                        const lines = content.split('\n').length;
+                        const size = new Blob([content]).size;
+                        
+                        fileSize.textContent = formatFileSize(size);
+                        lastUpdate.textContent = new Date().toLocaleString();
+                        lineCount.textContent = lines.toLocaleString();
+                        
+                        showNotification('Логи успешно загружены', 'success');
+                    }
+                })
+                .catch(function(error) {
+                    loadingConsole.style.display = 'none';
+                    consoleError.textContent = 'Ошибка загрузки: ' + error.message;
+                    consoleError.style.display = 'block';
+                    showNotification('Ошибка загрузки логов', 'error');
+                });
+        }
+        
+        // Clear console
+        function clearConsole() {
+            consoleLog.textContent = '';
+            consoleLog.style.display = 'none';
+            loadingConsole.style.display = 'flex';
+            loadingConsole.textContent = 'Консоль очищена';
+            
+            setTimeout(() => {
+                loadConsoleLog();
+            }, 1000);
+        }
+        
+        // Event listeners
+        document.getElementById('refresh-log').addEventListener('click', function() {
+            showNotification('Обновление логов...', 'info');
+            loadConsoleLog();
+        });
+        
+        document.getElementById('clear-console').addEventListener('click', function() {
+            if (confirm('Очистить консоль?')) {
+                clearConsole();
+            }
+        });
+        
+        // Auto-refresh every 30 seconds
+        setInterval(loadConsoleLog, 30000);
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConsoleLog();
+        });
+    </script>
 </body>
 </html>
