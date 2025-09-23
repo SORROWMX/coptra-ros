@@ -93,7 +93,7 @@ deb http://security.debian.org/debian-security bookworm-security main contrib no
 
 # Remove docker.list if exists
 rm -f /etc/apt/sources.list.d/docker.list
-
+sudo apt update
 # Install and configure SSH server
 my_travis_retry apt-get install -y openssh-server
 my_travis_retry apt-get purge -y binutils
