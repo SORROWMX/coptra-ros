@@ -65,7 +65,7 @@ safe_install() {
   local DESCRIPTION="$2"
   
   echo_stamp "Attempting: $DESCRIPTION"
-  if my_travis_retry $COMMAND; then
+  if my_travis_retry eval "$COMMAND"; then
     echo_stamp "SUCCESS: $DESCRIPTION"
   else
     echo_stamp "FAILED: $DESCRIPTION (continuing anyway)"
@@ -126,7 +126,7 @@ echo "Largest packages installed"
 # Check if debian-goodies is available in repositories
 if apt-cache policy debian-goodies | grep -q "Candidate:" && ! apt-cache policy debian-goodies | grep -q "Candidate: (none)"; then
     echo_stamp "debian-goodies found in repositories, installing normally"
-    safe_install "sudo -E sh -c 'apt-get install -y debian-goodies'" "Install debian-goodies"
+    safe_install "sudo apt-get install -y debian-goodies" "Install debian-goodies"
 else
     echo_stamp "debian-goodies not found in repositories, downloading from Debian archive"
     safe_install "wget -O /tmp/debian-goodies_0.88.1_all.deb http://ftp.us.debian.org/debian/pool/main/d/debian-goodies/debian-goodies_0.88.1_all.deb" "Download debian-goodies package"
@@ -135,4 +135,18 @@ else
     rm -f /tmp/debian-goodies_0.88.1_all.deb
 fi
 
-safe_install "dpigs -H -n 100" "Show largest packages"
+# Verify debian-goodies installation
+if ! command -v dpigs >/dev/null 2>&1; then
+    echo_stamp "debian-goodies installation failed or incomplete, trying alternative installation" "WARNING"
+    # Try installing essential debian-goodies components individually
+    safe_install "sudo apt-get install -y debianutils" "Install debianutils as fallback"
+fi
+
+# Check if dpigs is available (from debian-goodies package)
+if command -v dpigs >/dev/null 2>&1; then
+    safe_install "dpigs -H -n 100" "Show largest packages"
+else
+    echo_stamp "dpigs not available, using alternative method for package size analysis" "WARNING"
+    # Alternative: use dpkg-query to show largest packages
+    safe_install "dpkg-query -Wf '\${Installed-Size}\t\${Package}\n' | sort -n | tail -20" "Show largest packages (alternative method)"
+fi

@@ -28,7 +28,7 @@ jobs:
           docker run --privileged --rm -v /dev:/dev -v $(pwd):/builder/repo -e TRAVIS_TAG="${{ github.event.release.tag_name }}" --platform linux/amd64 sfalexrog/img-tool:qemu-update
       - name: Compress image
         run: |
-          cd images && sudo chmod -R 777 . && zip -9 $(echo *_*).zip *_* && ls -l . && unzip -l *_*.zip
+          cd images && sudo chmod -R 777 . && zip -9 coptra-ros-image.zip coptra-ros_*.img && ls -l . && unzip -l coptra-ros-image.zip
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -40,7 +40,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: ${{ github.event_name == 'release' }}
         with:
-          files: images/*_*.zip
+          files: images/coptra-ros-image.zip
           prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

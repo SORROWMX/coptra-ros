@@ -472,7 +472,7 @@ my_travis_retry pip3 install --prefer-binary rpi_ws281x
 
 echo_stamp "Installing pyzbar"
 my_travis_retry pip3 install pyzbar
-
+my_travis_retry pip3 install cv-bridge
 echo_stamp "Setup ROS environment"
 # Create rosout symlink
 mkdir -p /opt/ros/noetic/share/rosout
