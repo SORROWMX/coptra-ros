@@ -1,0 +1,73 @@
+# Coptra Configuration File
+# This file contains all configurable parameters for the Coptra system
+
+# MAVROS Configuration
+mavros:
+  fcu_conn: "usb"  # options: usb, uart, tcp, udp, sitl, hitl
+  fcu_ip: "127.0.0.1"
+  fcu_sys_id: 1
+  gcs_bridge: "tcp"  # options: tcp, udp, udp-b, udp-pb, false
+  usb_device: "/dev/ttyACM0"
+
+# Camera Configuration
+camera:
+  direction_z: "down"  # options: down, up, forward, backward
+  direction_y: "backward"  # options: backward, forward
+  device: "/dev/video0"
+  throttled_topic: false
+  throttled_topic_rate: 5.0
+  rectify: false
+
+# ArUco Configuration
+aruco:
+  enabled: true
+  detect: true
+  map: true
+  vpe: true
+  placement: "floor"  # options: floor, ceiling, unknown
+  length: 0.33  # not-in-map markers length in meters
+  map_file: "map.txt"  # markers map file name
+
+# Optical Flow Configuration
+optical_flow:
+  enabled: false
+  calc_flow_gyro: false
+  disable_on_vpe: false
+  enable_resize: true
+  resize_width: 64
+  resize_height: 32
+  use_hanning: false
+  roi_rad: 0.0
+  scale_x: 35.0
+  scale_y: 53.0
+  sensor_id: 0
+  publish_shift: false
+  publish_debug: true
+
+# LED Configuration
+led:
+  enabled: false
+  ws281x: true
+  led_effect: true
+  led_notify: true
+  led_count: 72
+  gpio_pin: 21
+
+# Web Services Configuration
+web_services:
+  web_video_server: true
+  rosbridge: true
+
+# Additional Components
+components:
+  main_camera: true
+  rangefinder_vl53l1x: false
+  blocks: false
+  rc: false
+  force_init: true
+
+# System Configuration
+system:
+  log_format: "[${severity}] [${time}]: ${logger}: ${message}"
+  respawn: true
+  respawn_delay: 5

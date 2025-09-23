@@ -1,0 +1,83 @@
+name: Build .deb Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-packages:
+    runs-on: ubuntu-20.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: Setup ROS Noetic
+      uses: ros-tooling/setup-ros-action@v0.6
+      with:
+        required-ros-distributions: noetic
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python-bloom fakeroot
+        sudo apt-get install -y python3-pip
+        pip3 install PyYAML
+    
+    - name: Setup GPG key for Orange Pi repository
+      run: |
+        sudo install -d -m 0755 /etc/apt/keyrings
+        curl -fsSL https://sorrowmx.github.io/orangepi3b-ros-noetic/public-key.asc | sudo gpg --dearmor -o /etc/apt/keyrings/orangepi-ros-noetic.gpg
+        sudo chmod 0644 /etc/apt/keyrings/orangepi-ros-noetic.gpg
+        echo "deb [arch=arm64 signed-by=/etc/apt/keyrings/orangepi-ros-noetic.gpg] https://sorrowmx.github.io/orangepi3b-ros-noetic/debian bookworm main" | sudo tee /etc/apt/sources.list.d/ros-noetic-orangepi.list
+        sudo apt update
+    
+    - name: Install ROS dependencies
+      run: |
+        sudo apt-get install -y \
+          ros-noetic-cv-bridge \
+          ros-noetic-image-transport \
+          ros-noetic-message-generation \
+          ros-noetic-message-runtime \
+          ros-noetic-nodelet \
+          ros-noetic-tf2 \
+          ros-noetic-tf2-ros \
+          ros-noetic-tf2-geometry-msgs \
+          ros-noetic-std-msgs \
+          ros-noetic-geometry-msgs \
+          ros-noetic-sensor-msgs \
+          ros-noetic-visualization-msgs \
+          ros-noetic-dynamic-reconfigure \
+          ros-noetic-image-proc \
+          ros-noetic-image-geometry \
+          ros-noetic-mavros \
+          ros-noetic-mavros-extras \
+          ros-noetic-cv-camera \
+          ros-noetic-rosbridge-server \
+          ros-noetic-web-video-server \
+          ros-noetic-tf2-web-republisher \
+          ros-noetic-topic-tools \
+          python3-pymavlink
+    
+    - name: Build packages
+      run: |
+        chmod +x scripts/build_packages.sh
+        ./scripts/build_packages.sh
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: deb-packages
+        path: deb_packages/
+        retention-days: 30
+    
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: deb_packages/*.deb
+        generate_release_notes: true

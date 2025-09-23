@@ -1,0 +1,17 @@
+# Bloom configuration for coptra package
+name: coptra
+version: 0.1.0
+release_tag: 'v{version}'
+release_repository_url: https://github.com/your-username/coptra-release.git
+upstream_repository_url: https://github.com/your-username/clover-master.git
+upstream_tag: 'v{version}'
+ros_distro: noetic
+debian_inc: 1
+debian_distro: focal
+patches:
+  - debian/patches/0001-fix-python-path.patch
+  - debian/patches/0002-fix-launch-paths.patch
+debian_packages:
+  - coptra
+  - coptra-dev
+  - coptra-doc

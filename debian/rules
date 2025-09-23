@@ -1,0 +1,30 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_install:
+	# Create configuration directory
+	mkdir -p debian/coptra-meta/etc/coptra
+	# Copy configuration files
+	cp config/coptra_config.yaml debian/coptra-meta/etc/coptra/
+	# Copy generated launch files
+	mkdir -p debian/coptra-meta/opt/ros/noetic/share/coptra/launch
+	cp generated_launch/*.launch debian/coptra-meta/opt/ros/noetic/share/coptra/launch/ 2>/dev/null || true
+	# Create systemd service file
+	mkdir -p debian/coptra-meta/lib/systemd/system
+	cat > debian/coptra-meta/lib/systemd/system/coptra.service << 'EOF'
+[Unit]
+Description=Coptra Drone Control System
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/opt/ros/noetic/bin/roslaunch coptra coptra_generated.launch
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
