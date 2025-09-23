@@ -48,4 +48,4 @@ print(cv2.getBuildInformation())
 
 if not os.environ.get('VM'):
     import rpi_ws281x
-    import pigpio
+
