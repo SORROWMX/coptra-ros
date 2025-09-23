@@ -118,6 +118,10 @@ echo_stamp "Building ROS packages with catkin build"
 # Add memory and build optimizations to prevent segfaults
 export MAKEFLAGS="-j1"  # Single threaded build to reduce memory usage
 export CMAKE_BUILD_PARALLEL_LEVEL=1  # Limit parallel compilation
+# Add environment variables to help with message generation on ARM
+export ROS_LANG_DISABLE="eus"  # Disable EusLisp if causing issues
+export CATKIN_WHITELIST_PACKAGES=""  # Clear whitelist
+export CATKIN_BLACKLIST_PACKAGES=""  # Clear blacklist
 # Clear any existing build artifacts that might cause issues
 rm -rf /home/orangepi/catkin_ws/build/coptra_blocks
 rm -rf /home/orangepi/catkin_ws/devel/.private/coptra_blocks
@@ -127,12 +131,29 @@ rm -rf /home/orangepi/catkin_ws/devel/.private/aruco_pose
 echo 1 > /proc/sys/vm/drop_caches 2>/dev/null || true  # Clear system caches
 # Set memory limits to prevent segfaults
 ulimit -v 2097152 2>/dev/null || true  # Limit virtual memory to 2GB
-# Try building with memory optimizations
-if ! safe_install "catkin build --jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0'" "Build ROS packages"; then
-    echo_stamp "First build attempt failed, trying with continue-on-failure" "ERROR"
-    # Try building individual packages to isolate problematic ones
-    echo_stamp "Trying to build packages individually to isolate issues"
-    safe_install "catkin build --jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0' coptra roswww_static" "Build core packages only"
+# Try building with memory optimizations and disabled EusLisp
+if ! safe_install "catkin build --jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0' -DROS_LANG_DISABLE=eus" "Build ROS packages"; then
+    echo_stamp "First build attempt failed, trying with coptra_blocks excluded" "ERROR"
+    # Try building without coptra_blocks to avoid segfault
+    echo_stamp "Trying to build packages excluding coptra_blocks"
+    safe_install "catkin build --jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0' -DROS_LANG_DISABLE=eus --blacklist coptra_blocks" "Build packages excluding coptra_blocks"
+    
+    # If that works, try building coptra_blocks separately with more aggressive memory limits
+    if [ $? -eq 0 ]; then
+        echo_stamp "Core packages built successfully, trying coptra_blocks with memory limits"
+        # Set even more restrictive memory limits for coptra_blocks
+        ulimit -v 1048576 2>/dev/null || true  # Limit to 1GB
+        ulimit -m 1048576 2>/dev/null || true  # Limit physical memory
+        # Clear caches before building coptra_blocks
+        echo 1 > /proc/sys/vm/drop_caches 2>/dev/null || true
+        
+        # Try building coptra_blocks with single thread and no parallel jobs
+        if ! safe_install "catkin build --jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' -DROS_LANG_DISABLE=eus coptra_blocks" "Build coptra_blocks with memory limits"; then
+            echo_stamp "catkin build failed, trying catkin_make_isolated for coptra_blocks" "ERROR"
+            # Fallback to catkin_make_isolated which is more stable on ARM
+            safe_install "catkin_make_isolated --install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' -DROS_LANG_DISABLE=eus --pkg coptra_blocks" "Build coptra_blocks with catkin_make_isolated"
+        fi
+    fi
 fi
 # Source setup.bash from appropriate location
 if [ -f "devel/setup.bash" ]; then
