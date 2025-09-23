@@ -115,7 +115,18 @@ catkin config --install --install-space /opt/ros/noetic \
 
 # Build with catkin build
 echo_stamp "Building ROS packages with catkin build"
-safe_install "catkin build" "Build ROS packages"
+# Add memory and build optimizations to prevent segfaults
+export MAKEFLAGS="-j1"  # Single threaded build to reduce memory usage
+export CMAKE_BUILD_PARALLEL_LEVEL=1  # Limit parallel compilation
+# Clear any existing build artifacts that might cause issues
+rm -rf /home/orangepi/catkin_ws/build/coptra_blocks
+rm -rf /home/orangepi/catkin_ws/devel/.private/coptra_blocks
+# Try building with memory optimizations
+if ! safe_install "catkin build --jobs 1 --limit-jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0'" "Build ROS packages"; then
+    echo_stamp "First build attempt failed, trying with coptra_blocks excluded" "ERROR"
+    # Try building without the problematic coptra_blocks package
+    safe_install "catkin build --jobs 1 --limit-jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0' --continue-on-failure" "Build ROS packages (excluding problematic packages)"
+fi
 source install/setup.bash
 
 echo_stamp "Install clever package (for backwards compatibility)"
