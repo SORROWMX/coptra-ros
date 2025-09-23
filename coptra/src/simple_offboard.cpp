@@ -1160,7 +1160,8 @@ bool takeoff(Takeoff::Request& req, Takeoff::Response& res)
 		takeoff_cmd.request.longitude = NAN;
 		takeoff_cmd.request.altitude = req.altitude;
 
-		ros::ServiceClient takeoff_client = nh.serviceClient<mavros_msgs::CommandTOL>(mavros + "/cmd/takeoff");
+		ros::NodeHandle nh_takeoff;
+		ros::ServiceClient takeoff_client = nh_takeoff.serviceClient<mavros_msgs::CommandTOL>((mavros + "/cmd/takeoff").c_str());
 		
 		if (!takeoff_client.call(takeoff_cmd)) {
 			throw std::runtime_error("Failed to call MAVROS takeoff service");

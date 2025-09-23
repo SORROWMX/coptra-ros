@@ -134,26 +134,105 @@ if ! safe_install "catkin build --jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release
     echo_stamp "Trying to build packages individually to isolate issues"
     safe_install "catkin build --jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0' coptra roswww_static" "Build core packages only"
 fi
-source install/setup.bash
+# Source setup.bash from appropriate location
+if [ -f "devel/setup.bash" ]; then
+    source devel/setup.bash
+    echo_stamp "Sourced devel/setup.bash"
+elif [ -f "/opt/ros/noetic/setup.bash" ]; then
+    source /opt/ros/noetic/setup.bash
+    echo_stamp "Sourced /opt/ros/noetic/setup.bash"
+else
+    echo_stamp "Warning: No setup.bash found, using system ROS" "ERROR"
+fi
 
-echo_stamp "Install clever package (for backwards compatibility)"
-cd /home/orangepi/catkin_ws/src/coptra-ros/builder/assets/clever
-safe_install "./setup.py install" "Install clever package"
+echo_stamp "Install coptra package (for backwards compatibility)"
+cd /home/orangepi/catkin_ws/src/coptra-ros/builder/assets
+# Fix permissions and install with sudo
+chmod +x setup.py
+safe_install "sudo ./setup.py install" "Install coptra package"
 rm -rf build  # remove build artifacts
 
 
 echo_stamp "Change permissions for catkin_ws"
 chown -Rf orangepi:orangepi /home/orangepi/catkin_ws
-
+cd /home/orangepi/catkin_ws
 echo_stamp "Update www"
-safe_install "sudo -u orangepi sh -c '. install/setup.bash && rosrun roswww_static update'" "Update www"
+# Update www with roswww_static
+safe_install "sudo -u orangepi bash -c 'source /opt/ros/noetic/setup.bash && rosrun roswww_static update'" "Update www"
+
 
 echo_stamp "Setup nginx web files"
 # Copy files from roswww_static to nginx directory
 if [ -d /home/orangepi/.ros/www ]; then
+    # Create nginx directory
+    safe_install "mkdir -p /var/www/ros" "Create nginx directory"
+    
+    # Remove existing files to avoid conflicts
+    rm -rf /var/www/ros/*
+    
+    # Copy new files
     cp -r /home/orangepi/.ros/www/* /var/www/ros/
     chown -R www-data:www-data /var/www/ros/
     chmod -R 755 /var/www/ros/
+    echo_stamp "Web files copied successfully to /var/www/ros/"
+    
+    # Create nginx configuration for ROS
+    echo_stamp "Creating nginx configuration"
+    safe_install "tee /etc/nginx/sites-available/ros > /dev/null << 'EOF'
+server {
+    listen 80;
+    server_name localhost;
+    
+    # Главная страница - перенаправляем на coptra
+    location = / {
+        return 301 /coptra/;
+    }
+    
+    # Статические файлы из coptra/www
+    location /coptra/ {
+        alias /var/www/ros/coptra/;
+        index index.html;
+        try_files \$uri \$uri/ =404;
+    }
+    
+    # Статические файлы из coptra_blocks/www
+    location /coptra_blocks/ {
+        alias /var/www/ros/coptra_blocks/;
+        index index.html;
+        try_files \$uri \$uri/ =404;
+    }
+    
+    # Для статических файлов (CSS, JS, изображения)
+    location ~* \\.(css|js|png|jpg|jpeg|gif|ico|svg)\$ {
+        root /var/www/ros;
+        expires 1y;
+        add_header Cache-Control \"public, immutable\";
+    }
+}
+EOF" "Create nginx ROS configuration"
+    
+    # Create symbolic link (check if it exists first)
+    if [ ! -L /etc/nginx/sites-enabled/ros ]; then
+        safe_install "ln -s /etc/nginx/sites-available/ros /etc/nginx/sites-enabled/" "Enable ROS site"
+    else
+        echo_stamp "ROS site already enabled"
+    fi
+    
+    # Remove default configuration (check if it exists first)
+    if [ -L /etc/nginx/sites-enabled/default ]; then
+        safe_install "rm -f /etc/nginx/sites-enabled/default" "Remove default nginx site"
+    else
+        echo_stamp "Default nginx site already removed"
+    fi
+    
+    # Test nginx configuration
+    safe_install "nginx -t" "Test nginx configuration"
+    
+    # Restart nginx
+    safe_install "systemctl restart nginx" "Restart nginx"
+    safe_install "systemctl enable nginx" "Enable nginx"
+    
+    echo_stamp "Nginx configured successfully for ROS"
 else
     echo_stamp "Warning: /home/orangepi/.ros/www not found, skipping web files copy"
 fi
@@ -188,17 +267,13 @@ echo_stamp "Setup ROS environment"
 cat << EOF >> /home/orangepi/.bashrc
 LANG='C.UTF-8'
 LC_ALL='C.UTF-8'
-export ROS_HOSTNAME=\`hostname\`.local
+export ROS_HOSTNAME=$(hostname).local
 source /opt/ros/${ROS_DISTRO}/setup.bash
-source /home/orangepi/catkin_ws/install/setup.bash
+source /home/orangepi/catkin_ws/devel/setup.bash
 EOF
 
-#echo_stamp "Removing local apt mirror"
-# Restore original sources.list
-#mv /var/sources.list.bak /etc/apt/sources.list
-# Clean apt cache
+
 apt-get clean -qq > /dev/null
-# Remove local mirror repository key
-#apt-key del COEX-MIRROR
+
 
 echo_stamp "END of ROS INSTALLATION"

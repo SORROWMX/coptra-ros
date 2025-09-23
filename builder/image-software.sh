@@ -366,6 +366,7 @@ ros-noetic-ros-core \
 ros-noetic-ros-base \
 ros-noetic-ros-comm \
 ros-noetic-rosout \
+ros-noetic-rosbash \
 ros-noetic-message-generation \
 ros-noetic-message-runtime \
 ros-noetic-std-msgs \
@@ -382,7 +383,11 @@ libroscpp-core-dev \
 ros-noetic-rosbridge-server \
 ros-noetic-mavros-extras \
 ros-noetic-web-video-server \
-ros-noetic-tf2-web-republisher || {
+ros-noetic-tf2-web-republisher \
+liborocos-kdl1.4 \
+ros-noetic-message-runtime \
+libstd-msgs-dev \
+libros-rosgraph-msgs-dev || {
     echo_stamp "Standard ROS installation failed, trying force overwrite method"
     # If standard installation fails, try force overwrite for problematic packages
     for pkg in python3-rosinstall python3-rosinstall-generator; do
