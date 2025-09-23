@@ -122,6 +122,9 @@ export CMAKE_BUILD_PARALLEL_LEVEL=1  # Limit parallel compilation
 export ROS_LANG_DISABLE="eus"  # Disable EusLisp if causing issues
 export CATKIN_WHITELIST_PACKAGES=""  # Clear whitelist
 export CATKIN_BLACKLIST_PACKAGES=""  # Clear blacklist
+# Add compiler optimizations for ARM to reduce memory usage
+export CXXFLAGS="-O1 -g0 -fno-omit-frame-pointer -fno-stack-protector"
+export CFLAGS="-O1 -g0 -fno-omit-frame-pointer -fno-stack-protector"
 # Clear any existing build artifacts that might cause issues
 rm -rf /home/orangepi/catkin_ws/build/coptra_blocks
 rm -rf /home/orangepi/catkin_ws/devel/.private/coptra_blocks
@@ -136,7 +139,7 @@ if ! safe_install "catkin build --jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release
     echo_stamp "First build attempt failed, trying with coptra_blocks excluded" "ERROR"
     # Try building without coptra_blocks to avoid segfault
     echo_stamp "Trying to build packages excluding coptra_blocks"
-    safe_install "catkin build --jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0' -DROS_LANG_DISABLE=eus --blacklist coptra_blocks" "Build packages excluding coptra_blocks"
+    safe_install "catkin build --jobs 1 --blacklist coptra_blocks aruco_pose --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0' -DROS_LANG_DISABLE=eus" "Build packages excluding problematic packages"
     
     # If that works, try building coptra_blocks separately with more aggressive memory limits
     if [ $? -eq 0 ]; then
@@ -152,6 +155,17 @@ if ! safe_install "catkin build --jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release
             echo_stamp "catkin build failed, trying catkin_make_isolated for coptra_blocks" "ERROR"
             # Fallback to catkin_make_isolated which is more stable on ARM
             safe_install "catkin_make_isolated --install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' -DROS_LANG_DISABLE=eus --pkg coptra_blocks" "Build coptra_blocks with catkin_make_isolated"
+        fi
+        
+        # Try building aruco_pose with memory limits
+        echo_stamp "Trying to build aruco_pose with memory limits"
+        ulimit -v 1048576 2>/dev/null || true  # Limit to 1GB
+        ulimit -m 1048576 2>/dev/null || true  # Limit physical memory
+        echo 1 > /proc/sys/vm/drop_caches 2>/dev/null || true
+        if ! safe_install "catkin build --jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' -DROS_LANG_DISABLE=eus aruco_pose" "Build aruco_pose with memory limits"; then
+            echo_stamp "catkin build failed, trying catkin_make_isolated for aruco_pose" "ERROR"
+            # Fallback to catkin_make_isolated for aruco_pose
+            safe_install "catkin_make_isolated --install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' -DROS_LANG_DISABLE=eus --pkg aruco_pose" "Build aruco_pose with catkin_make_isolated"
         fi
     fi
 fi
