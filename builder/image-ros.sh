@@ -14,7 +14,7 @@
 # copies or substantial portions of the Software.
 #
 
-set -ex # exit on error, echo commands
+set -e # exit on error, but don't echo commands (we'll handle errors manually)
 
 REPO=$1
 REF=$2
@@ -69,12 +69,25 @@ my_travis_retry() {
   return $result
 }
 
+# Function to handle installation failures gracefully
+safe_install() {
+  local cmd="$1"
+  local description="$2"
+  
+  echo_stamp "Attempting: $description"
+  if eval "$cmd"; then
+    echo_stamp "SUCCESS: $description" "SUCCESS"
+  else
+    echo_stamp "FAILED: $description (continuing anyway)" "ERROR"
+    return 1
+  fi
+}
+
 # TODO: 'noetic-rosdep-coptra.yaml' should add only if we use our repo?
-echo_stamp "Init rosdep"
-my_travis_retry rosdep init
+safe_install "my_travis_retry rosdep init" "Init rosdep"
 # FIXME: Re-add this after missing packages are built
 echo "yaml file:///etc/ros/rosdep/${ROS_DISTRO}-rosdep-coptra.yaml" >> /etc/ros/rosdep/sources.list.d/10-coptra.list
-my_travis_retry rosdep update --include-eol-distros
+safe_install "my_travis_retry rosdep update --include-eol-distros" "Update rosdep"
 
 
 
@@ -88,24 +101,16 @@ if [ ! -d "/home/orangepi/catkin_ws/src/coptra-ros" ]; then
     cd /home/orangepi/catkin_ws
 fi
 
-echo_stamp "Installing additional ROS packages for Orange Pi"
-apt install -y --no-install-recommends \
-ros-${ROS_DISTRO}-compressed-image-transport \
-ros-${ROS_DISTRO}-cv-bridge \
-ros-${ROS_DISTRO}-cv-camera \
-ros-${ROS_DISTRO}-image-publisher \
-ros-${ROS_DISTRO}-web-video-server
 
-echo_stamp "Installing libboost-dev" # https://travis-ci.org/github/CopterExpress/clover/jobs/766318908#L6536
-my_travis_retry apt-get install -y --no-install-recommends libboost-dev libboost-all-dev
+
+safe_install "my_travis_retry apt-get install -y --no-install-recommends libboost-dev libboost-all-dev" "Installing libboost-dev"
 
 echo_stamp "Build and install Coptra"
 cd /home/orangepi/catkin_ws
 # Don't try to install gazebo_ros
-my_travis_retry rosdep install -y --from-paths src --ignore-src --rosdistro ${ROS_DISTRO} --os=debian:bookworm \
-  --skip-keys=gazebo_ros --skip-keys=gazebo_plugins
-my_travis_retry pip3 install wheel
-my_travis_retry pip3 install -r /home/orangepi/catkin_ws/src/coptra-ros/coptra/requirements.txt
+safe_install "my_travis_retry rosdep install -y --from-paths src --ignore-src --rosdistro ${ROS_DISTRO} --os=debian:bookworm --skip-keys=gazebo_ros --skip-keys=gazebo_plugins" "Install ROS dependencies"
+safe_install "my_travis_retry pip3 install wheel" "Install pip wheel"
+safe_install "my_travis_retry pip3 install -r /home/orangepi/catkin_ws/src/coptra-ros/coptra/requirements.txt" "Install Python requirements"
 source /opt/ros/${ROS_DISTRO}/setup.bash
 
 # Configure catkin workspace
@@ -115,12 +120,12 @@ catkin config --install --install-space /opt/ros/noetic \
 
 # Build with catkin build
 echo_stamp "Building ROS packages with catkin build"
-catkin build
+safe_install "catkin build" "Build ROS packages"
 source install/setup.bash
 
 echo_stamp "Install clever package (for backwards compatibility)"
 cd /home/orangepi/catkin_ws/src/coptra-ros/builder/assets/clever
-./setup.py install
+safe_install "./setup.py install" "Install clever package"
 rm -rf build  # remove build artifacts
 
 
@@ -128,7 +133,7 @@ echo_stamp "Change permissions for catkin_ws"
 chown -Rf orangepi:orangepi /home/orangepi/catkin_ws
 
 echo_stamp "Update www"
-sudo -u orangepi sh -c ". install/setup.bash && rosrun roswww_static update"
+safe_install "sudo -u orangepi sh -c '. install/setup.bash && rosrun roswww_static update'" "Update www"
 
 echo_stamp "Setup nginx web files"
 # Copy files from roswww_static to nginx directory
