@@ -376,6 +376,7 @@ ros-noetic-tf \
 ros-noetic-cv-bridge \
 ros-noetic-geographic-msgs \
 ros-noetic-eigen-conversions \
+ros-noetic-tf2-geometry-msgs \
 ros-noetic-mavros \
 libroscpp-core-dev \
 ros-noetic-rosbridge-server \

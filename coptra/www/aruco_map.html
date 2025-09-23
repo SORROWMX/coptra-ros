@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+	<head>
     <title>ArUco Карта - Coptra</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="data:,">
-    <script type="text/javascript" src="js/three.min.js"></script>
-    <script type="text/javascript" src="js/eventemitter2.js"></script>
-    <script type="text/javascript" src="js/roslib.js"></script>
-    <script type="text/javascript" src="js/ros3d.js"></script>
+		<script type="text/javascript" src="js/three.min.js"></script>
+		<script type="text/javascript" src="js/eventemitter2.js"></script>
+		<script type="text/javascript" src="js/roslib.js"></script>
+		<script type="text/javascript" src="js/ros3d.js"></script>
     <style>
         .aruco-container {
             background: white;
@@ -286,8 +286,8 @@
             }
         }
     </style>
-</head>
-<body>
+	</head>
+	<body>
     <div class="header">
         <h1><img src="coptra_icon_128.png" alt="Coptra"> Coptra Drone Kit</h1>
         <div class="subtitle">Продвинутые инструменты управления и мониторинга дрона</div>
@@ -321,7 +321,7 @@
                     <button class="aruco-error-btn" onclick="document.getElementById('aruco-error').style.display='none'">✖️ Закрыть</button>
                 </div>
             </div>
-            <div id="viz"></div>
+		<div id="viz"></div>
         </div>
         
         <div class="aruco-controls-panel">
@@ -336,24 +336,14 @@
 
     <div class="notification" id="notification"></div>
 
-    <script type="text/javascript" src="js/viz.js"></script>
-    <script>
+		<script type="text/javascript" src="js/viz.js"></script>
+    <script type="text/javascript" src="js/notifications.js"></script>
+		<script>
         // DOM elements
         const arucoStatus = document.getElementById('aruco-status');
         const loadingAruco = document.getElementById('loading-aruco');
         const arucoError = document.getElementById('aruco-error');
         const arucoInfo = document.getElementById('aruco-info');
-        const notification = document.getElementById('notification');
-        
-        // Show notification
-        function showNotification(message, type = 'info') {
-            notification.textContent = message;
-            notification.className = `notification ${type} show`;
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
-        }
         
         // Initialize ArUco map
         function initializeArucoMap() {
@@ -362,16 +352,16 @@
                 arucoError.style.display = 'none';
                 
                 // Set up the ArUco map scene
-                setScene('aruco_map');
-                addArucoMap();
-                addAxes();
+			setScene('aruco_map');
+			addArucoMap();
+			addAxes();
                 
                 // Hide loading and show success
                 setTimeout(() => {
                     loadingAruco.style.display = 'none';
                     arucoStatus.textContent = '✅ Подключено к ROS';
                     arucoStatus.className = 'aruco-status connected';
-                    showNotification('ArUco карта успешно загружена', 'success');
+                    notifications.success('ArUco карта успешно загружена');
                 }, 2000);
                 
             } catch (error) {
@@ -379,7 +369,7 @@
                 arucoError.style.display = 'block';
                 arucoStatus.textContent = '❌ Ошибка загрузки';
                 arucoStatus.className = 'aruco-status disconnected';
-                showNotification('Ошибка загрузки ArUco карты: ' + error.message, 'error');
+                notifications.error('Ошибка загрузки ArUco карты: ' + error.message);
             }
         }
         
@@ -413,9 +403,9 @@
             e.preventDefault();
             try {
                 // Reset camera view - implement actual 3D scene reset
-                showNotification('Вид сброшен', 'success');
+                notifications.success('Вид сброшен');
             } catch (error) {
-                showNotification('Ошибка сброса вида', 'error');
+                notifications.error('Ошибка сброса вида');
             }
         });
         
@@ -425,9 +415,9 @@
             const isActive = this.classList.contains('active');
             try {
                 // Toggle markers visibility - implement actual markers toggle
-                showNotification(isActive ? 'Маркеры включены' : 'Маркеры выключены', 'info');
+                notifications.info(isActive ? 'Маркеры включены' : 'Маркеры выключены');
             } catch (error) {
-                showNotification('Ошибка переключения маркеров', 'error');
+                notifications.error('Ошибка переключения маркеров');
             }
         });
         
@@ -437,9 +427,9 @@
             const isActive = this.classList.contains('active');
             try {
                 // Toggle axes visibility - implement actual axes toggle
-                showNotification(isActive ? 'Оси включены' : 'Оси выключены', 'info');
+                notifications.info(isActive ? 'Оси включены' : 'Оси выключены');
             } catch (error) {
-                showNotification('Ошибка переключения осей', 'error');
+                notifications.error('Ошибка переключения осей');
             }
         });
         
@@ -449,9 +439,9 @@
             const isActive = this.classList.contains('active');
             try {
                 // Toggle grid visibility - implement actual grid toggle
-                showNotification(isActive ? 'Сетка включена' : 'Сетка выключена', 'info');
+                notifications.info(isActive ? 'Сетка включена' : 'Сетка выключена');
             } catch (error) {
-                showNotification('Ошибка переключения сетки', 'error');
+                notifications.error('Ошибка переключения сетки');
             }
         });
         
@@ -459,6 +449,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             initializeArucoMap();
         });
-    </script>
-</body>
+		</script>
+	</body>
 </html>

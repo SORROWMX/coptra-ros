@@ -10,21 +10,16 @@ const noTopics = document.getElementById('no-topics');
 const topicMessage = document.getElementById('topic-message');
 const notification = document.getElementById('notification');
 
-// Show notification
-function showNotification(message, type = 'info') {
-    notification.textContent = message;
-    notification.className = `notification ${type} show`;
-    
-    setTimeout(() => {
-        notification.classList.remove('show');
-    }, 3000);
-}
+// Load notifications system
+const script = document.createElement('script');
+script.src = 'js/notifications.js';
+document.head.appendChild(script);
 
 ros.on('connection', function () {
     connectionStatus.textContent = '✅ Подключено к ROS';
     connectionStatus.className = 'connection-status connected';
     loadingTopics.style.display = 'none';
-    showNotification('Успешно подключено к ROS', 'success');
+    notifications.success('Успешно подключено к ROS');
     init();
 });
 
@@ -35,7 +30,7 @@ ros.on('close', function () {
     loadingTopics.textContent = 'Переподключение...';
     topicsList.style.display = 'none';
     noTopics.style.display = 'none';
-    showNotification('Потеряно соединение с ROS', 'error');
+    notifications.error('Потеряно соединение с ROS');
     
     setTimeout(function() {
         // reconnect
@@ -48,7 +43,7 @@ ros.on('error', function(error) {
     connectionStatus.className = 'connection-status';
     loadingTopics.style.display = 'block';
     loadingTopics.textContent = 'Ошибка подключения...';
-    showNotification('Ошибка подключения к ROS: ' + error, 'error');
+    notifications.error('Ошибка подключения к ROS: ' + error);
 });
 
 function viewTopicsList() {
@@ -98,7 +93,7 @@ function viewTopicsList() {
             }
         }).join('');
         
-        showNotification(`Загружено ${topics.topics.length} топиков`, 'success');
+        notifications.success(`Загружено ${topics.topics.length} топиков`);
     });
 }
 
@@ -149,7 +144,7 @@ function viewTopic(topic) {
         
         // Show success notification on first message
         if (counter === 1) {
-            showNotification(`Начата подписка на топик: ${topic}`, 'success');
+            notifications.success(`Начата подписка на топик: ${topic}`);
         }
     });
 }

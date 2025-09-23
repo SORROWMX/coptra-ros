@@ -94,28 +94,21 @@
 	
 	<div class="notification" id="notification"></div>
 	
+	<script type="text/javascript" src="js/notifications.js"></script>
 	<script>
 		let currentMode = 'unknown';
 		
 		// Show notification
-		function showNotification(message, type = 'info') {
-			const notification = document.getElementById('notification');
-			notification.textContent = message;
-			notification.className = `notification ${type} show`;
-			
-			setTimeout(() => {
-				notification.classList.remove('show');
-			}, 3000);
-		}
+		// Using global notifications system
 		
 		// Switch network mode
 		async function switchMode(mode) {
 			if (mode === currentMode) {
-				showNotification('Уже в режиме ' + mode, 'info');
+				notifications.info('Уже в режиме ' + mode);
 				return;
 			}
 			
-			showNotification('Переключение в режим ' + mode + '...', 'info');
+			notifications.info('Переключение в режим ' + mode + '...');
 			
 			try {
 				const response = await fetch('./cgi-bin/network-switch', {
@@ -130,15 +123,15 @@
 					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 				}
 				
-				showNotification('Успешно переключено в режим ' + mode, 'success');
+				notifications.success('Успешно переключено в режим ' + mode);
 				setTimeout(refreshStatus, 2000);
 				
 			} catch (error) {
 				// Only show error notification if it's not a network error
 				if (!error.message.includes('NetworkError') && !error.message.includes('fetch')) {
-					showNotification('Ошибка переключения режима: ' + error.message, 'error');
+					notifications.error('Ошибка переключения режима: ' + error.message);
 				} else {
-					showNotification('Сетевая ошибка. Проверьте подключение.', 'error');
+					notifications.error('Сетевая ошибка. Проверьте подключение.');
 				}
 			}
 		}
@@ -205,7 +198,7 @@
 				
 				// Only show error notification if it's not a network error
 				if (!error.message.includes('NetworkError') && !error.message.includes('fetch')) {
-					showNotification('Ошибка обновления статуса: ' + error.message, 'error');
+					notifications.error('Ошибка обновления статуса: ' + error.message);
 				}
 			}
 		}
@@ -236,7 +229,7 @@
 				return;
 			}
 			
-			showNotification('Перезапуск сетевых сервисов...', 'info');
+			notifications.info('Перезапуск сетевых сервисов...');
 			
 			try {
 				const response = await fetch('./cgi-bin/restart-network', {
@@ -247,15 +240,15 @@
 					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 				}
 				
-				showNotification('Сетевые сервисы успешно перезапущены', 'success');
+				notifications.success('Сетевые сервисы успешно перезапущены');
 				setTimeout(refreshStatus, 3000);
 				
 			} catch (error) {
 				// Only show error notification if it's not a network error
 				if (!error.message.includes('NetworkError') && !error.message.includes('fetch')) {
-					showNotification('Ошибка перезапуска сервисов: ' + error.message, 'error');
+					notifications.error('Ошибка перезапуска сервисов: ' + error.message);
 				} else {
-					showNotification('Сетевая ошибка. Проверьте подключение.', 'error');
+					notifications.error('Сетевая ошибка. Проверьте подключение.');
 				}
 			}
 		}

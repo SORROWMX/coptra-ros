@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+	<head>
     <title>3D Визуализация - Coptra</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="data:,">
-    <script type="text/javascript" src="js/three.min.js"></script>
-    <script type="text/javascript" src="js/eventemitter2.js"></script>
-    <script type="text/javascript" src="js/roslib.js"></script>
-    <script type="text/javascript" src="js/ros3d.js"></script>
+		<script type="text/javascript" src="js/three.min.js"></script>
+		<script type="text/javascript" src="js/eventemitter2.js"></script>
+		<script type="text/javascript" src="js/roslib.js"></script>
+		<script type="text/javascript" src="js/ros3d.js"></script>
     <style>
         .viz-container {
             background: white;
@@ -285,8 +285,8 @@
             }
         }
     </style>
-</head>
-<body>
+	</head>
+	<body>
     <div class="header">
         <h1><img src="coptra_icon_128.png" alt="Coptra"> Coptra Drone Kit</h1>
         <div class="subtitle">Продвинутые инструменты управления и мониторинга дрона</div>
@@ -320,7 +320,7 @@
                     <button class="viz-error-btn" onclick="document.getElementById('viz-error').style.display='none'">✖️ Закрыть</button>
                 </div>
             </div>
-            <div id="viz"></div>
+		<div id="viz"></div>
         </div>
         
         <div class="viz-controls-panel">
@@ -335,24 +335,14 @@
 
     <div class="notification" id="notification"></div>
 
-    <script type="text/javascript" src="js/viz.js"></script>
-    <script>
+		<script type="text/javascript" src="js/viz.js"></script>
+    <script type="text/javascript" src="js/notifications.js"></script>
+		<script>
         // DOM elements
         const vizStatus = document.getElementById('viz-status');
         const loadingViz = document.getElementById('loading-viz');
         const vizError = document.getElementById('viz-error');
         const vizInfo = document.getElementById('viz-info');
-        const notification = document.getElementById('notification');
-        
-        // Show notification
-        function showNotification(message, type = 'info') {
-            notification.textContent = message;
-            notification.className = `notification ${type} show`;
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
-        }
         
         // Initialize 3D scene
         function initializeViz() {
@@ -361,17 +351,17 @@
                 vizError.style.display = 'none';
                 
                 // Set up the 3D scene
-                setScene('map');
-                addVehicle();
-                addCamera();
-                addAruco();
+			setScene('map');
+			addVehicle();
+			addCamera();
+			addAruco();
                 
                 // Hide loading and show success
                 setTimeout(() => {
                     loadingViz.style.display = 'none';
                     vizStatus.textContent = '✅ Подключено к ROS';
                     vizStatus.className = 'viz-status connected';
-                    showNotification('3D сцена успешно загружена', 'success');
+                    notifications.success('3D сцена успешно загружена');
                 }, 2000);
                 
             } catch (error) {
@@ -379,7 +369,7 @@
                 vizError.style.display = 'block';
                 vizStatus.textContent = '❌ Ошибка загрузки';
                 vizStatus.className = 'viz-status disconnected';
-                showNotification('Ошибка загрузки 3D сцены: ' + error.message, 'error');
+                notifications.error('Ошибка загрузки 3D сцены: ' + error.message);
             }
         }
         
@@ -388,9 +378,9 @@
             e.preventDefault();
             try {
                 // Reset camera view - implement actual 3D scene reset
-                showNotification('Вид сброшен', 'success');
+                notifications.success('Вид сброшен');
             } catch (error) {
-                showNotification('Ошибка сброса вида', 'error');
+                notifications.error('Ошибка сброса вида');
             }
         });
         
@@ -400,9 +390,9 @@
             const isActive = this.classList.contains('active');
             try {
                 // Toggle grid visibility - implement actual grid toggle
-                showNotification(isActive ? 'Сетка включена' : 'Сетка выключена', 'info');
+                notifications.info(isActive ? 'Сетка включена' : 'Сетка выключена');
             } catch (error) {
-                showNotification('Ошибка переключения сетки', 'error');
+                notifications.error('Ошибка переключения сетки');
             }
         });
         
@@ -412,9 +402,9 @@
             const isActive = this.classList.contains('active');
             try {
                 // Toggle axes visibility - implement actual axes toggle
-                showNotification(isActive ? 'Оси включены' : 'Оси выключены', 'info');
+                notifications.info(isActive ? 'Оси включены' : 'Оси выключены');
             } catch (error) {
-                showNotification('Ошибка переключения осей', 'error');
+                notifications.error('Ошибка переключения осей');
             }
         });
         
@@ -424,9 +414,9 @@
             const isActive = this.classList.contains('active');
             try {
                 // Toggle trajectory visibility - implement actual trajectory toggle
-                showNotification(isActive ? 'Траектория включена' : 'Траектория выключена', 'info');
+                notifications.info(isActive ? 'Траектория включена' : 'Траектория выключена');
             } catch (error) {
-                showNotification('Ошибка переключения траектории', 'error');
+                notifications.error('Ошибка переключения траектории');
             }
         });
         
@@ -434,6 +424,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             initializeViz();
         });
-    </script>
-</body>
+		</script>
+	</body>
 </html>

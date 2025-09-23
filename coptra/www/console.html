@@ -312,7 +312,8 @@
 
     <div class="notification" id="notification"></div>
 
-    <script type="module">
+    <script type="text/javascript" src="js/notifications.js"></script>
+<script type="module">
         // DOM elements
         const loadingConsole = document.getElementById('loading-console');
         const consoleError = document.getElementById('console-error');
@@ -323,14 +324,7 @@
         const lineCount = document.getElementById('line-count');
         
         // Show notification
-        function showNotification(message, type = 'info') {
-            notification.textContent = message;
-            notification.className = `notification ${type} show`;
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
-        }
+        // Using global notifications system
         
         // Format file size
         function formatFileSize(bytes) {
@@ -353,15 +347,15 @@
                         consoleError.textContent = 'Файл /var/log/clover.log не найден';
                         consoleError.style.display = 'block';
                         loadingConsole.style.display = 'none';
-                        showNotification('Файл логов не найден', 'error');
-                        return;
-                    } else if (response.status !== 200) {
+                        notifications.error('Файл логов не найден');
+			return;
+		} else if (response.status !== 200) {
                         consoleError.textContent = 'Ошибка ' + response.status;
                         consoleError.style.display = 'block';
                         loadingConsole.style.display = 'none';
-                        showNotification('Ошибка загрузки логов: ' + response.status, 'error');
-                        return;
-                    }
+                        notifications.error('Ошибка загрузки логов: ' + response.status);
+			return;
+		}
                     
                     return response.text();
                 })
@@ -379,14 +373,14 @@
                         lastUpdate.textContent = new Date().toLocaleString();
                         lineCount.textContent = lines.toLocaleString();
                         
-                        showNotification('Логи успешно загружены', 'success');
+                        notifications.success('Логи успешно загружены');
                     }
                 })
                 .catch(function(error) {
                     loadingConsole.style.display = 'none';
                     consoleError.textContent = 'Ошибка загрузки: ' + error.message;
                     consoleError.style.display = 'block';
-                    showNotification('Ошибка загрузки логов', 'error');
+                    notifications.error('Ошибка загрузки логов');
                 });
         }
         
@@ -404,7 +398,7 @@
         
         // Event listeners
         document.getElementById('refresh-log').addEventListener('click', function() {
-            showNotification('Обновление логов...', 'info');
+            notifications.info('Обновление логов...');
             loadConsoleLog();
         });
         
@@ -420,7 +414,7 @@
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
             loadConsoleLog();
-        });
-    </script>
+	});
+</script>
 </body>
 </html>
