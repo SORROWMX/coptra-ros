@@ -1,119 +1,158 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<title>Coptra Drone Kit Tools</title>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<link rel="stylesheet" href="style.css">
-	<link rel="icon" href="data:,">
+    <title>Coptra Drone Kit Tools</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:,">
 </head>
 <body>
-	<div class="container">
-		<h1>🚁 Coptra Drone Kit</h1>
-		<div class="subtitle">Advanced drone control and monitoring tools</div>
-		
-		<ul class="nav-list">
-			<li class="nav-item">
-				<a href="topics.html" class="nav-link">
-					<span style="font-size: 1.5rem; display: block; margin-bottom: 8px;">📡</span>
-					<span style="font-weight: 600; font-size: 1.2rem;">ROS Topics</span>
-					<div class="nav-description">Real-time topic monitoring</div>
-				</a>
-			</li>
-			<li class="nav-item">
-				<a href="" id="wvs" class="nav-link">
-					<span style="font-size: 1.5rem; display: block; margin-bottom: 8px;">📹</span>
-					<span style="font-weight: 600; font-size: 1.2rem;">Camera Stream</span>
-					<div class="nav-description">Live video feed from drone cameras</div>
-				</a>
-			</li>
-			<li class="nav-item">
-				<a href="" id="butterfly" class="nav-link">
-					<span style="font-size: 1.5rem; display: block; margin-bottom: 8px;">💻</span>
-					<span style="font-weight: 600; font-size: 1.2rem;">Web Terminal</span>
-					<div class="nav-description">Remote system access</div>
-				</a>
-			</li>
-			<li class="nav-item">
-				<a href="viz.html" class="nav-link">
-					<span style="font-size: 1.5rem; display: block; margin-bottom: 8px;">🎯</span>
-					<span style="font-weight: 600; font-size: 1.2rem;">3D Visualization</span>
-					<div class="nav-description">Real-time 3D drone position</div>
-				</a>
-			</li>
-			<li class="nav-item">
-				<a href="aruco_map.html" class="nav-link">
-					<span style="font-size: 1.5rem; display: block; margin-bottom: 8px;">🗺️</span>
-					<span style="font-weight: 600; font-size: 1.2rem;">ArUco Map</span>
-					<div class="nav-description">Marker-based positioning map</div>
-				</a>
-			</li>
-			<li class="nav-item">
-				<a href="../coptra_blocks/" class="nav-link">
-					<span style="font-size: 1.5rem; display: block; margin-bottom: 8px;">🧩</span>
-					<span style="font-weight: 600; font-size: 1.2rem;">Visual Programming</span>
-					<div class="nav-description">Drag-and-drop flight programming</div>
-				</a>
-			</li>
-			<li class="nav-item">
-				<a href="wifi.html" class="nav-link">
-					<span style="font-size: 1.5rem; display: block; margin-bottom: 8px;">📶</span>
-					<span style="font-weight: 600; font-size: 1.2rem;">WiFi Settings</span>
-					<div class="nav-description">Network mode configuration</div>
-				</a>
-			</li>
-			<li class="nav-item">
-				<a href="console.html" class="nav-link">
-					<span style="font-size: 1.5rem; display: block; margin-bottom: 8px;">📝</span>
-					<span style="font-weight: 600; font-size: 1.2rem;">System Console</span>
-					<div class="nav-description">System logs and diagnostics</div>
-				</a>
-			</li>
-		</ul>
+    <div class="header">
+        <h1>🚁 Coptra Drone Kit</h1>
+        <div class="subtitle">Продвинутые инструменты управления и мониторинга дрона</div>
+    </div>
 
-	</div>
-	
-	<div class="version">
-		<div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px;">
-			<span class="status-indicator status-connected"></span>
-			<span style="font-weight: 600; font-size: 1rem;">System Status</span>
-		</div>
-		<div id="version-text" style="font-size: 0.9rem; opacity: 0.8;">Loading...</div>
-	</div>
+    <div class="container">
+        <div class="nav-grid">
+            <div class="nav-card">
+                <a href="topics.html" class="nav-link">
+                    <div class="nav-icon">📡</div>
+                    <div class="nav-title">ROS Топики</div>
+                    <div class="nav-description">Мониторинг топиков в реальном времени</div>
+                    <div class="nav-arrow">→</div>
+                </a>
+                <div class="loading-spinner"></div>
+            </div>
 
-	<script type="text/javascript">
-		// Set external links
-		document.querySelector("#wvs").href = location.protocol + '//' + location.hostname + ':8080';
-		document.querySelector("#butterfly").href = location.protocol + '//' + location.hostname + ':57575';
+            <div class="nav-card">
+                <a href="" id="wvs" class="nav-link">
+                    <div class="nav-icon">📹</div>
+                    <div class="nav-title">Видеопоток</div>
+                    <div class="nav-description">Прямая трансляция с камер дрона</div>
+                    <div class="nav-arrow">→</div>
+                </a>
+                <div class="loading-spinner"></div>
+            </div>
 
-		// Terminal access warning for local connections
-		document.querySelector("#butterfly").addEventListener('click', function(e) {
-			if (location.hostname == 'localhost' || location.hostname == '127.0.0.1') {
-				if (!confirm('Please use regular Terminal app on a local machine.\nClick OK to proceed to Butterfly anyway.')) {
-					e.preventDefault();
-				}
-			}
-		});
+            <div class="nav-card">
+                <a href="" id="butterfly" class="nav-link">
+                    <div class="nav-icon">💻</div>
+                    <div class="nav-title">Веб Терминал</div>
+                    <div class="nav-description">Удаленный доступ к системе</div>
+                    <div class="nav-arrow">→</div>
+                </a>
+                <div class="loading-spinner"></div>
+            </div>
 
-		// Load version information
-		fetch('coptra_version').then(function(response) {
-			const versionEl = document.querySelector('#version-text');
-			const statusIndicator = document.querySelector('.status-indicator');
-			
-			if (response.status !== 200) {
-				versionEl.innerHTML = 'Version information unavailable';
-				statusIndicator.className = 'status-indicator status-warning';
-				return;
-			}
-			
-			response.text().then(function(text) {
-				versionEl.innerHTML = 'Version: ' + text.trim();
-				statusIndicator.className = 'status-indicator status-connected';
-			});
-		}).catch(function() {
-			document.querySelector('#version-text').innerHTML = 'System offline';
-			document.querySelector('.status-indicator').className = 'status-indicator status-disconnected';
-		});
-	</script>
+            <div class="nav-card">
+                <a href="viz.html" class="nav-link">
+                    <div class="nav-icon">🎯</div>
+                    <div class="nav-title">3D Визуализация</div>
+                    <div class="nav-description">Позиция дрона в 3D в реальном времени</div>
+                    <div class="nav-arrow">→</div>
+                </a>
+                <div class="loading-spinner"></div>
+            </div>
+
+            <div class="nav-card">
+                <a href="aruco_map.html" class="nav-link">
+                    <div class="nav-icon">🗺️</div>
+                    <div class="nav-title">ArUco Карта</div>
+                    <div class="nav-description">Карта позиционирования по маркерам</div>
+                    <div class="nav-arrow">→</div>
+                </a>
+                <div class="loading-spinner"></div>
+            </div>
+
+            <div class="nav-card">
+                <a href="../coptra_blocks/" class="nav-link">
+                    <div class="nav-icon">🧩</div>
+                    <div class="nav-title">Визуальное Программирование</div>
+                    <div class="nav-description">Программирование полета перетаскиванием</div>
+                    <div class="nav-arrow">→</div>
+                </a>
+                <div class="loading-spinner"></div>
+            </div>
+
+            <div class="nav-card">
+                <a href="wifi.html" class="nav-link">
+                    <div class="nav-icon">📶</div>
+                    <div class="nav-title">Настройки WiFi</div>
+                    <div class="nav-description">Конфигурация сетевого режима</div>
+                    <div class="nav-arrow">→</div>
+                </a>
+                <div class="loading-spinner"></div>
+            </div>
+
+            <div class="nav-card">
+                <a href="console.html" class="nav-link">
+                    <div class="nav-icon">📝</div>
+                    <div class="nav-title">Системная Консоль</div>
+                    <div class="nav-description">Системные логи и диагностика</div>
+                    <div class="nav-arrow">→</div>
+                </a>
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="version-info">
+            <div class="version-text" id="version-text">Загрузка...</div>
+            <div class="last-updated">Последнее обновление: <span id="lastUpdated">-</span></div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        // Set external links
+        document.querySelector("#wvs").href = location.protocol + '//' + location.hostname + ':8080';
+        document.querySelector("#butterfly").href = location.protocol + '//' + location.hostname + ':57575';
+
+        // Terminal access warning for local connections
+        document.querySelector("#butterfly").addEventListener('click', function(e) {
+            if (location.hostname == 'localhost' || location.hostname == '127.0.0.1') {
+                if (!confirm('Пожалуйста, используйте обычное приложение Terminal на локальной машине.\nНажмите OK, чтобы продолжить к Butterfly.')) {
+                    e.preventDefault();
+                }
+            }
+        });
+
+        // Load version information
+        fetch('coptra_version').then(function(response) {
+            const versionEl = document.querySelector('#version-text');
+            
+            if (response.status !== 200) {
+                versionEl.innerHTML = 'Информация о версии недоступна';
+                return;
+            }
+            
+            response.text().then(function(text) {
+                versionEl.innerHTML = 'Версия: ' + text.trim();
+            });
+        }).catch(function() {
+            document.querySelector('#version-text').innerHTML = 'Система офлайн';
+        });
+
+        // Update last updated time
+        function updateLastUpdated() {
+            const lastUpdatedElement = document.getElementById('lastUpdated');
+            if (lastUpdatedElement) {
+                const now = new Date();
+                lastUpdatedElement.textContent = now.toLocaleString();
+            }
+        }
+
+        // Add loading state to navigation cards
+        document.querySelectorAll('.nav-card a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                const card = this.closest('.nav-card');
+                card.classList.add('loading');
+            });
+        });
+
+        // Initialize page
+        updateLastUpdated();
+    </script>
 </body>
 </html>

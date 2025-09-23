@@ -84,10 +84,11 @@ safe_install() {
 }
 
 # TODO: 'noetic-rosdep-coptra.yaml' should add only if we use our repo?
-safe_install "my_travis_retry rosdep init" "Init rosdep"
+# ROSDEP REMOVED - causing duplicate package conflicts
+# safe_install "my_travis_retry rosdep init" "Init rosdep"
 # FIXME: Re-add this after missing packages are built
-echo "yaml file:///etc/ros/rosdep/${ROS_DISTRO}-rosdep-coptra.yaml" >> /etc/ros/rosdep/sources.list.d/10-coptra.list
-safe_install "my_travis_retry rosdep update --include-eol-distros" "Update rosdep"
+# echo "yaml file:///etc/ros/rosdep/${ROS_DISTRO}-rosdep-coptra.yaml" >> /etc/ros/rosdep/sources.list.d/10-coptra.list
+# safe_install "my_travis_retry rosdep update --include-eol-distros" "Update rosdep"
 
 
 
@@ -108,7 +109,8 @@ safe_install "my_travis_retry apt-get install -y --no-install-recommends libboos
 echo_stamp "Build and install Coptra"
 cd /home/orangepi/catkin_ws
 # Don't try to install gazebo_ros
-safe_install "my_travis_retry rosdep install -y --from-paths src --ignore-src --rosdistro ${ROS_DISTRO} --os=debian:bookworm --skip-keys=gazebo_ros --skip-keys=gazebo_plugins" "Install ROS dependencies"
+# ROSDEP INSTALLATION REMOVED - causing duplicate package conflicts
+# safe_install "my_travis_retry rosdep install -y --from-paths src --ignore-src --rosdistro ${ROS_DISTRO} --os=debian:bookworm --skip-keys=gazebo_ros --skip-keys=gazebo_plugins" "Install ROS dependencies"
 safe_install "my_travis_retry pip3 install wheel" "Install pip wheel"
 safe_install "my_travis_retry pip3 install -r /home/orangepi/catkin_ws/src/coptra-ros/coptra/requirements.txt" "Install Python requirements"
 source /opt/ros/${ROS_DISTRO}/setup.bash
