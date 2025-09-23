@@ -120,7 +120,6 @@ done
 /builder/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/avahi-services/sftp-ssh.service' '/etc/avahi/services'
 
 
-# Coptra (Clover for Orange Pi)
 /builder/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/noetic-rosdep-coptra.yaml' '/etc/ros/rosdep/'
 /builder/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/ros_python_paths' '/etc/sudoers.d/'
 /builder/image-chroot.sh ${IMAGE_PATH} copy ${SCRIPTS_DIR}'/assets/pigpiod.service' '/lib/systemd/system/'

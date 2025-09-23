@@ -123,15 +123,19 @@
             const versionEl = document.querySelector('#version-text');
             
             if (response.status !== 200) {
-                versionEl.innerHTML = 'Информация о версии недоступна';
+                versionEl.innerHTML = '<span class="unavailable-status">⚠️ Информация о версии недоступна</span>';
+                versionEl.classList.add('unavailable');
                 return;
             }
             
             response.text().then(function(text) {
-                versionEl.innerHTML = 'Версия: ' + text.trim();
+                versionEl.innerHTML = '<span class="version-info-text">Версия: ' + text.trim() + '</span>';
+                versionEl.classList.add('online');
             });
         }).catch(function() {
-            document.querySelector('#version-text').innerHTML = 'Система офлайн';
+            const versionEl = document.querySelector('#version-text');
+            versionEl.innerHTML = '<span class="offline-status">🔴 Система офлайн</span>';
+            versionEl.classList.add('offline');
         });
 
         // Update last updated time

@@ -190,6 +190,20 @@ body {
     padding: 20px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     text-align: center;
+    border: 1px solid #eee;
+    position: relative;
+    overflow: hidden;
+}
+
+.footer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #28a745, #20c997);
+    border-radius: 8px 8px 0 0;
 }
 
 
@@ -204,12 +218,94 @@ body {
     font-weight: 600;
     color: #333;
     margin-bottom: 10px;
+    transition: all 0.3s ease;
+}
+
+.version-text.offline {
+    color: #dc3545;
+    animation: pulse 2s infinite;
+}
+
+.offline-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #fef2f2 0%, #fef7f7 100%);
+    border: 1px solid #fecaca;
+    border-radius: 20px;
+    font-size: 0.95em;
+    font-weight: 600;
+    color: #991b1b;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 .last-updated {
     font-size: 0.9em;
     color: #666;
     opacity: 0.8;
+    transition: all 0.3s ease;
+}
+
+.version-text.online {
+    color: #28a745;
+    font-weight: 700;
+}
+
+.version-text.online::before {
+    content: '🟢 ';
+    margin-right: 5px;
+}
+
+.version-info-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+    border: 1px solid #bbf7d0;
+    border-radius: 20px;
+    font-size: 0.95em;
+    font-weight: 600;
+    color: #065f46;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.version-text.unavailable {
+    color: #f59e0b;
+    font-weight: 600;
+}
+
+.unavailable-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border: 1px solid #fed7aa;
+    border-radius: 20px;
+    font-size: 0.95em;
+    font-weight: 600;
+    color: #92400e;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.1);
+    backdrop-filter: blur(10px);
 }
 
 /* Responsive Design */

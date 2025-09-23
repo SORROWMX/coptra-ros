@@ -121,11 +121,18 @@ export CMAKE_BUILD_PARALLEL_LEVEL=1  # Limit parallel compilation
 # Clear any existing build artifacts that might cause issues
 rm -rf /home/orangepi/catkin_ws/build/coptra_blocks
 rm -rf /home/orangepi/catkin_ws/devel/.private/coptra_blocks
+rm -rf /home/orangepi/catkin_ws/build/aruco_pose
+rm -rf /home/orangepi/catkin_ws/devel/.private/aruco_pose
+# Add system memory management
+echo 1 > /proc/sys/vm/drop_caches 2>/dev/null || true  # Clear system caches
+# Set memory limits to prevent segfaults
+ulimit -v 2097152 2>/dev/null || true  # Limit virtual memory to 2GB
 # Try building with memory optimizations
 if ! safe_install "catkin build --jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0'" "Build ROS packages"; then
     echo_stamp "First build attempt failed, trying with continue-on-failure" "ERROR"
-    # Try building with continue-on-failure to skip problematic packages
-    safe_install "catkin build --jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0' --continue-on-failure" "Build ROS packages (continuing on failure)"
+    # Try building individual packages to isolate problematic ones
+    echo_stamp "Trying to build packages individually to isolate issues"
+    safe_install "catkin build --jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0' coptra roswww_static" "Build core packages only"
 fi
 source install/setup.bash
 

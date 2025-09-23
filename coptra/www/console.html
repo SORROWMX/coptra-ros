@@ -272,10 +272,10 @@
         <div class="console-container">
             <div class="console-header">
                 <h2 class="console-title">
-                    📄 /var/log/clover.log
+                    📄 /var/log/coptra.log
                 </h2>
                 <div class="console-actions">
-                    <a href="clover.log" download class="console-btn">
+                    <a href="coptra.log" download class="console-btn">
                         📥 Скачать лог
                     </a>
                     <button class="console-btn secondary" id="refresh-log">
@@ -341,10 +341,10 @@
             consoleError.style.display = 'none';
             consoleLog.style.display = 'none';
             
-            fetch('clover.log?' + Math.random())
+            fetch('coptra.log?' + Math.random())
                 .then(function(response) {
                     if (response.status === 404) {
-                        consoleError.textContent = 'Файл /var/log/clover.log не найден';
+                        consoleError.textContent = 'Файл /var/log/coptra.log не найден';
                         consoleError.style.display = 'block';
                         loadingConsole.style.display = 'none';
                         notifications.error('Файл логов не найден');

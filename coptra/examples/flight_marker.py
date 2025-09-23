@@ -1,5 +1,5 @@
 
-# Information: https://clover.coex.tech/aruco
+# ArUco marker navigation example
 #!/usr/bin/env python3
 import math
 import rospy
@@ -7,7 +7,7 @@ from geometry_msgs.msg import PoseStamped
 from mavros_msgs.srv import CommandBool, SetMode, CommandTOL, CommandLong
 from mavros_msgs.msg import State
 from pymavlink import mavutil
-from clover import srv
+from coptra import srv
 from coptra.srv import Takeoff, Arm, SetMode
 from std_srvs.srv import Trigger
 rospy.init_node('flight')
