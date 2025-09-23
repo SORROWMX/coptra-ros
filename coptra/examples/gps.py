@@ -2,6 +2,7 @@
 
 import rospy
 from coptra import srv
+from coptra.srv import SetMode, Arm, Takeoff
 from std_srvs.srv import Trigger
 import math
 
@@ -14,6 +15,9 @@ set_position = rospy.ServiceProxy('set_position', srv.SetPosition)
 set_velocity = rospy.ServiceProxy('set_velocity', srv.SetVelocity)
 set_attitude = rospy.ServiceProxy('set_attitude', srv.SetAttitude)
 set_rates = rospy.ServiceProxy('set_rates', srv.SetRates)
+set_mode = rospy.ServiceProxy('set_mode', SetMode)
+arm = rospy.ServiceProxy('arm', Arm)
+takeoff = rospy.ServiceProxy('takeoff', Takeoff)
 land = rospy.ServiceProxy('land', Trigger)
 
 # GPS arrival waiting function
@@ -31,8 +35,17 @@ if math.isnan(start.lat):
 
 print('Start point global position: lat={}, lon={}'.format(start.lat, start.lon))
 
+print('Setting mode to GUIDED...')
+set_mode(mode='GUIDED')
+
+print('Arming drone...')
+arm(arm=True)
+
+print('Taking off to 3 meters...')
+takeoff(altitude=3.0)
+
 print('Take off 3 meters')
-navigate(x=0, y=0, z=3, frame_id='body', auto_arm=True)
+navigate(x=0, y=0, z=3, frame_id='body')
 wait_arrival()
 
 print('Fly 1 arcsecond to the North (approx. 30 meters)')

@@ -122,10 +122,10 @@ export CMAKE_BUILD_PARALLEL_LEVEL=1  # Limit parallel compilation
 rm -rf /home/orangepi/catkin_ws/build/coptra_blocks
 rm -rf /home/orangepi/catkin_ws/devel/.private/coptra_blocks
 # Try building with memory optimizations
-if ! safe_install "catkin build --jobs 1 --limit-jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0'" "Build ROS packages"; then
-    echo_stamp "First build attempt failed, trying with coptra_blocks excluded" "ERROR"
-    # Try building without the problematic coptra_blocks package
-    safe_install "catkin build --jobs 1 --limit-jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0' --continue-on-failure" "Build ROS packages (excluding problematic packages)"
+if ! safe_install "catkin build --jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0'" "Build ROS packages"; then
+    echo_stamp "First build attempt failed, trying with continue-on-failure" "ERROR"
+    # Try building with continue-on-failure to skip problematic packages
+    safe_install "catkin build --jobs 1 --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0' --continue-on-failure" "Build ROS packages (continuing on failure)"
 fi
 source install/setup.bash
 

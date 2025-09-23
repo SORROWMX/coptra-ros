@@ -103,6 +103,9 @@ add_service_files(
   SetRates.srv
   SetLEDEffect.srv
   Execute.srv
+  Takeoff.srv
+  Arm.srv
+  SetMode.srv
 )
 
 ## Generate actions in the 'action' folder

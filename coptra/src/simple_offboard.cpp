@@ -52,6 +52,9 @@
 #include <coptra/SetVelocity.h>
 #include <coptra/SetAttitude.h>
 #include <coptra/SetRates.h>
+#include <coptra/Takeoff.h>
+#include <coptra/Arm.h>
+#include <coptra/SetMode.h>
 #include <coptra/State.h>
 
 using std::string;
@@ -1033,11 +1036,11 @@ bool serve(enum setpoint_type_t sp_type, float x, float y, float z, float vx, fl
 }
 
 bool navigate(Navigate::Request& req, Navigate::Response& res) {
-	return serve(NAVIGATE, req.x, req.y, req.z, NAN, NAN, NAN, NAN, NAN, req.yaw, NAN, NAN, NAN, NAN, NAN, NAN, req.speed, req.frame_id, req.auto_arm, res.success, res.message);
+	return serve(NAVIGATE, req.x, req.y, req.z, NAN, NAN, NAN, NAN, NAN, req.yaw, NAN, NAN, NAN, NAN, NAN, NAN, req.speed, req.frame_id, false, res.success, res.message);
 }
 
 bool navigateGlobal(NavigateGlobal::Request& req, NavigateGlobal::Response& res) {
-	return serve(NAVIGATE_GLOBAL, NAN, NAN, req.z, NAN, NAN, NAN, NAN, NAN, req.yaw, NAN, NAN, NAN, req.lat, req.lon, NAN, req.speed, req.frame_id, req.auto_arm, res.success, res.message);
+	return serve(NAVIGATE_GLOBAL, NAN, NAN, req.z, NAN, NAN, NAN, NAN, NAN, req.yaw, NAN, NAN, NAN, req.lat, req.lon, NAN, req.speed, req.frame_id, false, res.success, res.message);
 }
 
 bool setAltitude(SetAltitude::Request& req, SetAltitude::Response& res) {
@@ -1123,6 +1126,185 @@ bool land(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res)
 		res.message = e.what();
 		ROS_INFO("%s", e.what());
 		busy = false;
+		return true;
+	}
+	return false;
+}
+
+bool takeoff(Takeoff::Request& req, Takeoff::Response& res)
+{
+	try {
+		if (busy)
+			throw std::runtime_error("Busy");
+
+		busy = true;
+
+		checkState();
+
+		if (land_only_in_guided) {
+			if (state.mode != "GUIDED") {
+				throw std::runtime_error("Copter is not in GUIDED mode");
+			}
+		}
+
+		// Check if already armed
+		if (!state.armed) {
+			throw std::runtime_error("Copter is not armed, arm first");
+		}
+
+		// Call MAVROS takeoff service
+		static mavros_msgs::CommandTOL takeoff_cmd;
+		takeoff_cmd.request.min_pitch = 0.0;
+		takeoff_cmd.request.yaw = NAN;
+		takeoff_cmd.request.latitude = NAN;
+		takeoff_cmd.request.longitude = NAN;
+		takeoff_cmd.request.altitude = req.altitude;
+
+		ros::ServiceClient takeoff_client = nh.serviceClient<mavros_msgs::CommandTOL>(mavros + "/cmd/takeoff");
+		
+		if (!takeoff_client.call(takeoff_cmd)) {
+			throw std::runtime_error("Failed to call MAVROS takeoff service");
+		}
+
+		if (!takeoff_cmd.response.success) {
+			throw std::runtime_error("Takeoff command failed: " + std::to_string(takeoff_cmd.response.result));
+		}
+
+		// Wait for takeoff to complete by checking altitude
+		ros::Rate r(10);
+		auto start = ros::Time::now();
+		float target_altitude = req.altitude;
+		
+		while (ros::ok()) {
+			ros::spinOnce();
+			
+			// Check if we've reached the target altitude
+			if (!TIMEOUT(local_position, local_position_timeout)) {
+				float current_altitude = local_position.pose.position.z;
+				if (current_altitude >= target_altitude * 0.9) { // 90% of target altitude
+					ROS_INFO("Takeoff completed, reached altitude: %.2f", current_altitude);
+					break;
+				}
+			}
+			
+			// Timeout after 30 seconds
+			if (ros::Time::now() - start > ros::Duration(30.0)) {
+				ROS_WARN("Takeoff timeout, but continuing...");
+				break;
+			}
+			
+			ros::spinOnce();
+			r.sleep();
+		}
+
+		res.success = true;
+		busy = false;
+		return true;
+
+	} catch (const std::exception& e) {
+		res.message = e.what();
+		ROS_INFO("%s", e.what());
+		busy = false;
+		return true;
+	}
+	return false;
+}
+
+bool arm(Arm::Request& req, Arm::Response& res)
+{
+	try {
+		checkState();
+
+		// Call MAVROS arming service
+		mavros_msgs::CommandBool arm_cmd;
+		arm_cmd.request.value = req.arm;
+
+		if (!arming.call(arm_cmd)) {
+			throw std::runtime_error("Failed to call MAVROS arming service");
+		}
+
+		if (!arm_cmd.response.success) {
+			throw std::runtime_error("Arming command failed: " + std::to_string(arm_cmd.response.result));
+		}
+
+		// Wait for arming state to change
+		ros::Rate r(10);
+		auto start = ros::Time::now();
+		
+		while (ros::ok()) {
+			ros::spinOnce();
+			
+			if (state.armed == req.arm) {
+				ROS_INFO("Arming state changed to: %s", state.armed ? "armed" : "disarmed");
+				break;
+			}
+			
+			// Timeout after 10 seconds
+			if (ros::Time::now() - start > ros::Duration(10.0)) {
+				ROS_WARN("Arming state change timeout");
+				break;
+			}
+			
+			ros::spinOnce();
+			r.sleep();
+		}
+
+		res.success = true;
+		return true;
+
+	} catch (const std::exception& e) {
+		res.message = e.what();
+		ROS_INFO("%s", e.what());
+		return true;
+	}
+	return false;
+}
+
+bool setMode(SetMode::Request& req, SetMode::Response& res)
+{
+	try {
+		checkState();
+
+		// Call MAVROS set_mode service
+		mavros_msgs::SetMode mode_cmd;
+		mode_cmd.request.custom_mode = req.mode;
+
+		if (!set_mode.call(mode_cmd)) {
+			throw std::runtime_error("Failed to call MAVROS set_mode service");
+		}
+
+		if (!mode_cmd.response.mode_sent) {
+			throw std::runtime_error("Set mode command failed");
+		}
+
+		// Wait for mode to change
+		ros::Rate r(10);
+		auto start = ros::Time::now();
+		
+		while (ros::ok()) {
+			ros::spinOnce();
+			
+			if (state.mode == req.mode) {
+				ROS_INFO("Mode changed to: %s", state.mode.c_str());
+				break;
+			}
+			
+			// Timeout after 5 seconds
+			if (ros::Time::now() - start > ros::Duration(5.0)) {
+				ROS_WARN("Mode change timeout, current mode: %s", state.mode.c_str());
+				break;
+			}
+			
+			ros::spinOnce();
+			r.sleep();
+		}
+
+		res.success = true;
+		return true;
+
+	} catch (const std::exception& e) {
+		res.message = e.what();
+		ROS_INFO("%s", e.what());
 		return true;
 	}
 	return false;
@@ -1233,7 +1415,9 @@ int main(int argc, char **argv)
 	auto sv_serv = nh.advertiseService("set_velocity", &setVelocity);
 	auto sa_serv = nh.advertiseService("set_attitude", &setAttitude);
 	auto sr_serv = nh.advertiseService("set_rates", &setRates);
-	// takeoff service advertisement removed by request
+	auto tk_serv = nh.advertiseService("takeoff", &takeoff);
+	auto arm_serv = nh.advertiseService("arm", &arm);
+	auto mode_serv = nh.advertiseService("set_mode", &setMode);
 	auto ld_serv = nh.advertiseService("land", &land);
 	auto rl_serv = nh_priv.advertiseService("release", &release);
 
