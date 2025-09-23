@@ -29,7 +29,14 @@ jobs:
       - name: Compress image
         run: |
           cd images && sudo chmod -R 777 . && zip -9 $(echo *_*).zip *_* && ls -l . && unzip -l *_*.zip
-      - name: Upload image
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: images
+          path: images/
+          retention-days: 30
+      
+      - name: Upload image to release
         uses: softprops/action-gh-release@v1
         if: ${{ github.event_name == 'release' }}
         with:

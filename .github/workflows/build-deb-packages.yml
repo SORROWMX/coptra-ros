@@ -56,12 +56,12 @@ jobs:
           ros-noetic-image-geometry \
           ros-noetic-mavros \
           ros-noetic-mavros-extras \
-          ros-noetic-cv-camera \
           ros-noetic-rosbridge-server \
           ros-noetic-web-video-server \
           ros-noetic-tf2-web-republisher \
           ros-noetic-topic-tools \
-          python3-pymavlink
+          python3-pymavlink \
+          python3-rospy
     
     - name: Build packages
       run: |

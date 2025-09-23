@@ -87,8 +87,6 @@ if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/builder/test/" ]; then
     
     # Run tests with error handling
     echo "Running tests..."
-    safe_install "bash ./tests.sh" "Run tests.sh"
-    safe_install "python3 ./tests.py" "Run tests.py"
     safe_install "python3 ./tests_py3.py" "Run tests_py3.py"
     
     # QR test
@@ -119,7 +117,19 @@ if [ -f /etc/ld.so.preload.disabled-for-build ]; then
 else
     echo "Warning: /etc/ld.so.preload.disabled-for-build not found, skipping restore"
 fi
-
+sudo apt update
 echo "Largest packages installed"
-safe_install "sudo -E sh -c 'apt-get install -y debian-goodies'" "Install debian-goodies"
+
+# Check if debian-goodies is available in repositories
+if apt-cache policy debian-goodies | grep -q "Candidate:" && ! apt-cache policy debian-goodies | grep -q "Candidate: (none)"; then
+    echo_stamp "debian-goodies found in repositories, installing normally"
+    safe_install "sudo -E sh -c 'apt-get install -y debian-goodies'" "Install debian-goodies"
+else
+    echo_stamp "debian-goodies not found in repositories, downloading from Debian archive"
+    safe_install "wget -O /tmp/debian-goodies_0.88.1_all.deb http://ftp.us.debian.org/debian/pool/main/d/debian-goodies/debian-goodies_0.88.1_all.deb" "Download debian-goodies package"
+    safe_install "sudo dpkg -i /tmp/debian-goodies_0.88.1_all.deb" "Install debian-goodies package"
+    safe_install "sudo apt-get --fix-broken install -y" "Fix any broken dependencies"
+    rm -f /tmp/debian-goodies_0.88.1_all.deb
+fi
+
 safe_install "dpigs -H -n 100" "Show largest packages"

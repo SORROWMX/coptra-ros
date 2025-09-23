@@ -31,8 +31,6 @@
   <depend>nodelet</depend>
   <depend>mavros</depend>
   <depend>mavros_extras</depend>
-  <depend>cv_camera</depend>
-  <depend>gscam</depend>
   <depend>cv_bridge</depend>
   <depend>rosbridge_server</depend>
   <depend>web_video_server</depend>

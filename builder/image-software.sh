@@ -359,6 +359,19 @@ EOF
 echo_stamp "ROS distro and rosdep packages installed from sorrowmx repository"
 
 echo_stamp "Installing ROS packages"
+
+# Check if python3-rospy is available in repositories
+if apt-cache policy python3-rospy | grep -q "Candidate:" && ! apt-cache policy python3-rospy | grep -q "Candidate: (none)"; then
+    echo_stamp "python3-rospy found in repositories, installing normally"
+    my_travis_retry apt-get install --no-install-recommends -y python3-rospy
+else
+    echo_stamp "python3-rospy not found in repositories, downloading from Debian archive"
+    my_travis_retry wget -O /tmp/python3-rospy_1.15.15+ds-2_all.deb http://ftp.us.debian.org/debian/pool/main/r/ros-ros-comm/python3-rospy_1.15.15+ds-2_all.deb
+    my_travis_retry dpkg -i /tmp/python3-rospy_1.15.15+ds-2_all.deb
+    my_travis_retry apt-get --fix-broken install -y
+    rm -f /tmp/python3-rospy_1.15.15+ds-2_all.deb
+fi
+
 # Try standard installation first (excluding already installed packages)
 my_travis_retry apt-get install --no-install-recommends -y \
 python3-rosinstall-generator \

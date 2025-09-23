@@ -10,6 +10,19 @@ sudo apt-get update
 
 # Install ROS Noetic dependencies
 echo "Installing ROS Noetic dependencies..."
+
+# Check if python3-rospy is available in repositories
+if apt-cache policy python3-rospy | grep -q "Candidate:" && ! apt-cache policy python3-rospy | grep -q "Candidate: (none)"; then
+    echo "python3-rospy found in repositories, installing normally"
+    sudo apt-get install -y python3-rospy
+else
+    echo "python3-rospy not found in repositories, downloading from Debian archive"
+    wget -O /tmp/python3-rospy_1.15.15+ds-2_all.deb http://ftp.us.debian.org/debian/pool/main/r/ros-ros-comm/python3-rospy_1.15.15+ds-2_all.deb
+    sudo dpkg -i /tmp/python3-rospy_1.15.15+ds-2_all.deb
+    sudo apt-get --fix-broken install -y
+    rm -f /tmp/python3-rospy_1.15.15+ds-2_all.deb
+fi
+
 sudo apt-get install -y \
   ros-noetic-cv-bridge \
   ros-noetic-image-transport \
@@ -28,7 +41,6 @@ sudo apt-get install -y \
   ros-noetic-image-geometry \
   ros-noetic-mavros \
   ros-noetic-mavros-extras \
-  ros-noetic-cv-camera \
   ros-noetic-gscam \
   ros-noetic-rosbridge-server \
   ros-noetic-web-video-server \
