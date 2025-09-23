@@ -14,6 +14,9 @@
 
 set -e # exit on error, but don't echo commands (we'll handle errors manually)
 
+# Increase stack size to prevent segmentation faults during compilation
+ulimit -s unlimited 2>/dev/null || true
+
 echo_stamp() {
   # TEMPLATE: echo_stamp <TEXT> <TYPE>
   # TYPE: SUCCESS, ERROR, INFO
