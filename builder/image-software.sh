@@ -89,7 +89,10 @@ touch /boot/ssh
 
 # Install and configure SSH server
 my_travis_retry apt-get install -y openssh-server
-
+my_travis_retry apt-get purge binutils
+my_travis_retry apt-get remove make
+my_travis_retry apt-get autoremove
+my_travis_retry apt-get install build-essential
 # Configure SSH for orangepi user
 echo_stamp "Setting up SSH access for orangepi user"
 # Create .ssh directory for orangepi user
