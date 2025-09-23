@@ -76,7 +76,37 @@ cat << 'EOF' > /etc/NetworkManager/conf.d/99-unmanaged-devices.conf
 unmanaged-devices=interface-name:wlan0
 EOF
 
-echo_stamp "#5 Create WiFi mode switcher script"
+echo_stamp "#5 Create hostapd configuration"
+
+# Create hostapd configuration directory
+mkdir -p /etc/hostapd
+
+# Generate random SSID using alternative method (xxd not available)
+NEW_SSID='coptra-'$(od -An -N4 -tu4 /dev/urandom | tr -d ' ' | cut -c 1-4)
+echo_stamp "Generated SSID: ${NEW_SSID}"
+
+# Create hostapd configuration file
+cat << EOF > /etc/hostapd/hostapd.conf
+interface=wlan0
+driver=nl80211
+ssid=${NEW_SSID}
+hw_mode=g
+channel=7
+wmm_enabled=0
+macaddr_acl=0
+auth_algs=1
+ignore_broadcast_ssid=0
+wpa=2
+wpa_passphrase=coptrawifi
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=TKIP
+rsn_pairwise=CCMP
+EOF
+
+# Set proper permissions
+chmod 600 /etc/hostapd/hostapd.conf
+
+echo_stamp "#6 Create WiFi mode switcher script"
 
 # Create network mode switcher script
 cat << 'EOF' > /usr/local/bin/network-switch
@@ -87,8 +117,8 @@ get_current_ssid() {
     if [ -f /etc/hostapd/hostapd.conf ]; then
         grep "^ssid=" /etc/hostapd/hostapd.conf | cut -d'=' -f2 | tr -d '"'
     else
-        # Generate new SSID if config doesn't exist
-        echo "coptra-$(head -c 100 /dev/urandom | xxd -ps -c 100 | sed -e 's/[^0-9]//g' | cut -c 1-4)"
+        # Generate new SSID if config doesn't exist (alternative method)
+        echo "coptra-$(od -An -N4 -tu4 /dev/urandom | tr -d ' ' | cut -c 1-4)"
     fi
 }
 
@@ -171,4 +201,14 @@ systemctl stop NetworkManager
 systemctl start hostapd dnsmasq
 ip addr add 192.168.11.1/24 dev wlan0 2>/dev/null || true
 
+# Verify hostapd is running
+if systemctl is-active --quiet hostapd; then
+    echo_stamp "✅ hostapd is running successfully"
+else
+    echo_stamp "❌ hostapd failed to start" "ERROR"
+    systemctl status hostapd
+fi
+
 echo_stamp "#8 End of network installation"
+echo_stamp "WiFi Access Point should be available as '${NEW_SSID}' with password 'coptrawifi'"
+echo_stamp "Web interface will be available at http://192.168.11.1"

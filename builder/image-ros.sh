@@ -238,12 +238,14 @@ else
 fi
 
 echo_stamp "Make \$HOME/examples symlink"
-EXAMPLES_PATH=$(catkin_find coptra examples --first-only 2>/dev/null || echo "")
-if [ -n "$EXAMPLES_PATH" ] && [ -d "$EXAMPLES_PATH" ]; then
+# Check for examples in the correct path
+if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra/examples" ]; then
+    EXAMPLES_PATH="/home/orangepi/catkin_ws/src/coptra-ros/coptra/examples"
     ln -s "$EXAMPLES_PATH" /home/orangepi/examples
     chown -Rf orangepi:orangepi /home/orangepi/examples
+    echo_stamp "Examples symlink created: $EXAMPLES_PATH -> /home/orangepi/examples"
 else
-    echo_stamp "Warning: coptra examples not found, skipping symlink creation"
+    echo_stamp "Warning: coptra examples not found at /home/orangepi/catkin_ws/src/coptra-ros/coptra/examples, skipping symlink creation"
 fi
 
 echo_stamp "Make systemd services symlinks"
