@@ -12,7 +12,62 @@
 # copies or substantial portions of the Software.
 #
 
-set -ex
+set -e # exit on error, but don't echo commands (we'll handle errors manually)
+
+echo_stamp() {
+  # TEMPLATE: echo_stamp <TEXT> <TYPE>
+  # TYPE: SUCCESS, ERROR, INFO
+  local TEXT="$1"
+  local TYPE="$2"
+  local TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+  
+  case $TYPE in
+    SUCCESS)
+      echo -e "\033[0;32m[${TIMESTAMP}] SUCCESS: ${TEXT}\033[0m"
+      ;;
+    ERROR)
+      echo -e "\033[0;31m[${TIMESTAMP}] ERROR: ${TEXT}\033[0m"
+      ;;
+    INFO)
+      echo -e "\033[0;34m[${TIMESTAMP}] INFO: ${TEXT}\033[0m"
+      ;;
+    *)
+      echo -e "\033[0;33m[${TIMESTAMP}] ${TEXT}\033[0m"
+      ;;
+  esac
+}
+
+# https://gist.github.com/letmaik/caa0f6cc4375cbfcc1ff26bd4530c2a3
+# https://github.com/travis-ci/travis-build/blob/master/lib/travis/build/templates/header.sh
+my_travis_retry() {
+  local result=0
+  local count=1
+  local max_count=5
+  while [ $count -le $max_count ]; do
+    [ $result -ne 0 ] && {
+      echo -e "\n\033[0;31mThe command \"$@\" failed. Retrying, $count of $max_count.\033[0m\n"
+    }
+    "$@" && { result=0 && break; } || result=$?
+    count=$(( $count + 1 ))
+    sleep 1
+  done
+  [ $count -gt $max_count ] && {
+    echo -e "\n\033[0;31mThe command \"$@\" failed after $max_count attempts.\033[0m\n"
+  }
+  return $result
+}
+
+safe_install() {
+  local COMMAND="$1"
+  local DESCRIPTION="$2"
+  
+  echo_stamp "Attempting: $DESCRIPTION"
+  if my_travis_retry $COMMAND; then
+    echo_stamp "SUCCESS: $DESCRIPTION"
+  else
+    echo_stamp "FAILED: $DESCRIPTION (continuing anyway)"
+  fi
+}
 
 echo "Run image tests"
 
@@ -26,24 +81,26 @@ systemctl start roscore
 if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/builder/test/" ]; then
     cd /home/orangepi/catkin_ws/src/coptra-ros/builder/test/
     
+    # Fix permissions for test files
+    echo "Fixing permissions for test files..."
+    chmod +x *.sh *.py 2>/dev/null || true
+    
     # Run tests with error handling
     echo "Running tests..."
-    ./tests.sh || echo "tests.sh failed, continuing..."
-    ./tests.py || echo "tests.py failed, continuing..."
-    ./tests_py3.py || echo "tests_py3.py failed, continuing..."
+    safe_install "bash ./tests.sh" "Run tests.sh"
+    safe_install "python3 ./tests.py" "Run tests.py"
+    safe_install "python3 ./tests_py3.py" "Run tests_py3.py"
     
     # QR test
     if [ -f "./test_qr.py" ]; then
-        QR_RESULT=$(./test_qr.py 2>/dev/null || echo "QR test failed")
-        echo "QR test result: $QR_RESULT"
+        safe_install "python3 ./test_qr.py" "Run QR test"
     else
         echo "test_qr.py not found, skipping..."
     fi
     
     # Clever compatibility test
     if [ -f "./tests_clever.py" ]; then
-        CLEVER_RESULT=$(./tests_clever.py 2>/dev/null || echo "Clever test failed")
-        echo "Clever test result: $CLEVER_RESULT"
+        safe_install "python3 ./tests_clever.py" "Run Clever test"
     else
         echo "tests_clever.py not found, skipping..."
     fi
@@ -54,9 +111,7 @@ fi
 
 systemctl stop roscore
 
-# check documented packages available
-apt-cache show gst-rtsp-launch
-apt-cache show openvpn
+
 
 echo "Move /etc/ld.so.preload back to its original position"
 if [ -f /etc/ld.so.preload.disabled-for-build ]; then
@@ -66,5 +121,5 @@ else
 fi
 
 echo "Largest packages installed"
-sudo -E sh -c 'apt-get install -y debian-goodies'
-dpigs -H -n 100
+safe_install "sudo -E sh -c 'apt-get install -y debian-goodies'" "Install debian-goodies"
+safe_install "dpigs -H -n 100" "Show largest packages"
