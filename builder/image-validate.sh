@@ -135,6 +135,10 @@ else
     rm -f /tmp/debian-goodies_0.88.1_all.deb
 fi
 
+# Install grep-status dependency for dpigs command
+echo_stamp "Installing grep-status dependency for dpigs command"
+safe_install "sudo apt-get install -y grep-status" "Install grep-status dependency"
+
 # Verify debian-goodies installation
 if ! command -v dpigs >/dev/null 2>&1; then
     echo_stamp "debian-goodies installation failed or incomplete, trying alternative installation" "WARNING"
@@ -144,7 +148,14 @@ fi
 
 # Check if dpigs is available (from debian-goodies package)
 if command -v dpigs >/dev/null 2>&1; then
-    safe_install "dpigs -H -n 100" "Show largest packages"
+    # Test if dpigs works properly (check for grep-status dependency)
+    if dpigs --help >/dev/null 2>&1; then
+        safe_install "dpigs -H -n 100" "Show largest packages"
+    else
+        echo_stamp "dpigs command failed, likely missing dependencies, using alternative method" "WARNING"
+        # Alternative: use dpkg-query to show largest packages
+        safe_install "dpkg-query -Wf '\${Installed-Size}\t\${Package}\n' | sort -n | tail -20" "Show largest packages (alternative method)"
+    fi
 else
     echo_stamp "dpigs not available, using alternative method for package size analysis" "WARNING"
     # Alternative: use dpkg-query to show largest packages

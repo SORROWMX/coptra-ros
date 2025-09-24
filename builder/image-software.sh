@@ -389,6 +389,7 @@ ros-noetic-rosbash \
 ros-noetic-message-generation \
 ros-noetic-message-runtime \
 ros-noetic-std-msgs \
+ros-noetic-sensor-msgs \
 ros-noetic-genmsg \
 ros-noetic-led-msgs \
 ros-noetic-image-transport \
