@@ -115,7 +115,8 @@ chmod -R 755 /home/orangepi/catkin_ws/
 
 # Configure catkin workspace
 echo_stamp "Configuring catkin workspace"
-catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DCATKIN_ENABLE_TESTING=OFF -DBUILD_TESTING=OFF
+catkin config --install --install-space /opt/ros/noetic \
+  --cmake-args -DCMAKE_BUILD_TYPE=Release -DCATKIN_ENABLE_TESTING=OFF -DBUILD_TESTING=OFF
 
 # Build with catkin build
 echo_stamp "Building ROS packages with catkin build"
