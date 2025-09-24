@@ -467,20 +467,9 @@ echo_stamp "Install and enable Butterfly (web terminal)"
 rm -f /usr/lib/python3.11/EXTERNALLY-MANAGED
 # Install butterfly as orangepi user in their local bin directory
 sudo -u orangepi pip3 install --user butterfly butterfly[systemd]
-# Create butterfly service symlink and enable it
-if [ -f "/home/orangepi/catkin_ws/src/coptra-ros/builder/assets/butterfly.service" ]; then
-    # Check if symlink already exists
-    if [ ! -L /lib/systemd/system/butterfly.service ]; then
-        ln -s /home/orangepi/catkin_ws/src/coptra-ros/builder/assets/butterfly.service /lib/systemd/system/
-        echo_stamp "butterfly.service symlink created"
-    else
-        echo_stamp "butterfly.service symlink already exists"
-    fi
-    systemctl enable butterfly.service
-    echo_stamp "butterfly.service enabled"
-else
-    echo_stamp "Warning: butterfly.service not found, skipping symlink creation"
-fi
+# Enable butterfly service (already copied by image-build.sh)
+systemctl enable butterfly.service
+echo_stamp "butterfly.service enabled"
 
 echo_stamp "Install ws281x library"
 my_travis_retry pip3 install --prefer-binary rpi_ws281x
