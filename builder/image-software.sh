@@ -469,9 +469,15 @@ rm -f /usr/lib/python3.11/EXTERNALLY-MANAGED
 sudo -u orangepi pip3 install --user butterfly butterfly[systemd]
 # Create butterfly service symlink and enable it
 if [ -f "/home/orangepi/catkin_ws/src/coptra-ros/builder/assets/butterfly.service" ]; then
-    ln -s /home/orangepi/catkin_ws/src/coptra-ros/builder/assets/butterfly.service /lib/systemd/system/
+    # Check if symlink already exists
+    if [ ! -L /lib/systemd/system/butterfly.service ]; then
+        ln -s /home/orangepi/catkin_ws/src/coptra-ros/builder/assets/butterfly.service /lib/systemd/system/
+        echo_stamp "butterfly.service symlink created"
+    else
+        echo_stamp "butterfly.service symlink already exists"
+    fi
     systemctl enable butterfly.service
-    echo_stamp "butterfly.service symlink created and enabled"
+    echo_stamp "butterfly.service enabled"
 else
     echo_stamp "Warning: butterfly.service not found, skipping symlink creation"
 fi
