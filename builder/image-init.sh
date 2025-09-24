@@ -38,15 +38,18 @@ echo_stamp() {
 
 echo_stamp "Write Coptra information"
 
+# Get version from coptra package.xml
+COPTRA_VERSION=$(grep -o '<version>[^<]*</version>' /home/orangepi/catkin_ws/src/coptra-ros/coptra/package.xml | sed 's/<version>\(.*\)<\/version>/\1/')
+if [ -z "$COPTRA_VERSION" ]; then
+    COPTRA_VERSION="unknown"
+    echo_stamp "Warning: Could not extract version from package.xml, using 'unknown'" "ERROR"
+fi
 # Coptra image version
-echo "$1" >> /etc/coptra_version
+echo "$COPTRA_VERSION" > /etc/coptra_version
 # Origin image file name
-echo "${2%.*}" >> /etc/coptra_origin
+echo "${2%.*}" > /etc/coptra_origin
 
-echo_stamp "Write magic script to /etc/rc.local"
-MAGIC_SCRIPT="sudo /root/init_rpi.sh; sudo sed -i '/sudo \\\/root\\\/init_rpi.sh/d' /etc/rc.local && sudo reboot"
-sed -i "19a${MAGIC_SCRIPT}" /etc/rc.local
-
+echo_stamp "Coptra version: $COPTRA_VERSION"
 
 echo_stamp "Set max space for syslogs"
 # https://unix.stackexchange.com/questions/139513/how-to-clear-journalctl

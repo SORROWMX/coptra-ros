@@ -1,0 +1,15 @@
+[Unit]
+Description=Network Setup Service for Coptra
+After=network.target
+Wants=network.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/home/orangepi/catkin_ws/src/coptra-ros/builder/assets/network-setup.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

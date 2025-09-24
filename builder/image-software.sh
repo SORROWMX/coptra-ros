@@ -465,8 +465,16 @@ pip3 --version
 echo_stamp "Install and enable Butterfly (web terminal)"
 # Remove EXTERNALLY-MANAGED restriction for pip
 rm -f /usr/lib/python3.11/EXTERNALLY-MANAGED
-my_travis_retry pip3 install --user butterfly butterfly[systemd]
-systemctl enable butterfly.socket
+# Install butterfly as orangepi user in their local bin directory
+sudo -u orangepi pip3 install --user butterfly butterfly[systemd]
+# Create butterfly service symlink and enable it
+if [ -f "/home/orangepi/catkin_ws/src/coptra-ros/builder/assets/butterfly.service" ]; then
+    ln -s /home/orangepi/catkin_ws/src/coptra-ros/builder/assets/butterfly.service /lib/systemd/system/
+    systemctl enable butterfly.service
+    echo_stamp "butterfly.service symlink created and enabled"
+else
+    echo_stamp "Warning: butterfly.service not found, skipping symlink creation"
+fi
 
 echo_stamp "Install ws281x library"
 my_travis_retry pip3 install --prefer-binary rpi_ws281x

@@ -110,11 +110,12 @@ cd /home/orangepi/catkin_ws
 safe_install "my_travis_retry pip3 install wheel" "Install pip wheel"
 safe_install "my_travis_retry pip3 install -r /home/orangepi/catkin_ws/src/coptra-ros/coptra/requirements.txt" "Install Python requirements"
 source /opt/ros/${ROS_DISTRO}/setup.bash
+chown -R orangepi:orangepi /home/orangepi/catkin_ws/
+chmod -R 755 /home/orangepi/catkin_ws/
 
 # Configure catkin workspace
 echo_stamp "Configuring catkin workspace"
-catkin config --install --install-space /opt/ros/noetic \
-  --cmake-args -DCMAKE_BUILD_TYPE=Release -DCATKIN_ENABLE_TESTING=OFF -DBUILD_TESTING=OFF
+catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DCATKIN_ENABLE_TESTING=OFF -DBUILD_TESTING=OFF
 
 # Build with catkin build
 echo_stamp "Building ROS packages with catkin build"
@@ -306,18 +307,31 @@ else
 fi
 
 echo_stamp "Make systemd services symlinks"
+if [ -f "/home/orangepi/catkin_ws/src/coptra-ros/builder/assets/roscore.service" ]; then
+    ln -s /home/orangepi/catkin_ws/src/coptra-ros/builder/assets/roscore.service /lib/systemd/system/
+    systemctl enable roscore
+    echo_stamp "roscore.service symlink created and enabled"
+else
+    echo_stamp "Warning: roscore.service not found, skipping symlink creation"
+fi
+
+# Then enable coptra (depends on roscore)
 if [ -f "/home/orangepi/catkin_ws/src/coptra-ros/builder/assets/coptra.service" ]; then
     ln -s /home/orangepi/catkin_ws/src/coptra-ros/builder/assets/coptra.service /lib/systemd/system/
-    echo_stamp "coptra.service symlink created"
+    systemctl enable coptra
+    echo_stamp "coptra.service symlink created and enabled"
 else
     echo_stamp "Warning: coptra.service not found, skipping symlink creation"
 fi
 
-if [ -f "/home/orangepi/catkin_ws/src/coptra-ros/builder/assets/roscore.service" ]; then
-    ln -s /home/orangepi/catkin_ws/src/coptra-ros/builder/assets/roscore.service /lib/systemd/system/
-    echo_stamp "roscore.service symlink created"
+# Enable network setup service (runs once on boot)
+if [ -f "/home/orangepi/catkin_ws/src/coptra-ros/builder/assets/network-setup.service" ]; then
+    ln -s /home/orangepi/catkin_ws/src/coptra-ros/builder/assets/network-setup.service /lib/systemd/system/
+    chmod +x /home/orangepi/catkin_ws/src/coptra-ros/builder/assets/network-setup.sh
+    systemctl enable network-setup
+    echo_stamp "network-setup.service symlink created and enabled"
 else
-    echo_stamp "Warning: roscore.service not found, skipping symlink creation"
+    echo_stamp "Warning: network-setup.service not found, skipping symlink creation"
 fi
 
 # Udev rules removed as requested
