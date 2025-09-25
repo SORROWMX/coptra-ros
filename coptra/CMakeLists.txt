@@ -152,7 +152,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
 #  INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS message_runtime std_msgs geometry_msgs sensor_msgs
+#  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
 )
 
@@ -214,11 +214,11 @@ target_link_libraries(coptra_led ${catkin_LIBRARIES})
 
 target_link_libraries(shell ${catkin_LIBRARIES})
 
-add_dependencies(simple_offboard ${PROJECT_NAME}_generate_messages_cpp)
+add_dependencies(simple_offboard ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-add_dependencies(coptra_led ${PROJECT_NAME}_generate_messages_cpp)
+add_dependencies(coptra_led ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-add_dependencies(shell ${PROJECT_NAME}_generate_messages_cpp)
+add_dependencies(shell ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_gencfg)
 
