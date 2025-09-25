@@ -137,7 +137,7 @@ fi
 
 # Install grep-status dependency for dpigs command
 echo_stamp "Installing grep-status dependency for dpigs command"
-safe_install "sudo apt-get install -y grep-status" "Install grep-status dependency"
+safe_install "sudo apt-get install -y dctrl-tools " "Install grep-status dependency"
 
 # Verify debian-goodies installation
 if ! command -v dpigs >/dev/null 2>&1; then

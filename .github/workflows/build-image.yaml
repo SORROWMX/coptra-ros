@@ -29,12 +29,21 @@ jobs:
       - name: Compress image
         run: |
           cd images && sudo chmod -R 777 . && zip -9 coptra-ros-image.zip coptra-ros_*.img && ls -l . && unzip -l coptra-ros-image.zip
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      # Skip artifacts upload due to storage quota - use release instead
+      - name: Create development release
+        uses: softprops/action-gh-release@v1
+        if: ${{ github.event_name != 'release' }}
         with:
-          name: coptra-ros-image
-          path: images/coptra-ros-image.zip
-          retention-days: 30
+          tag_name: dev-${{ github.sha }}
+          name: Development Build ${{ github.sha }}
+          files: images/coptra-ros-image.zip
+          prerelease: true
+          body: |
+            Automated development build from commit ${{ github.sha }}
+            Branch: ${{ github.ref_name }}
+            Built: ${{ github.run_id }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Upload image to release
         uses: softprops/action-gh-release@v1

@@ -333,12 +333,7 @@ else
     echo_stamp "Warning: No setup.bash found, using system ROS" "ERROR"
 fi
 
-echo_stamp "Install coptra package (for backwards compatibility)"
-cd /home/orangepi/catkin_ws/src/coptra-ros/builder/assets
-# Fix permissions and install with sudo
-chmod +x setup.py
-safe_install "sudo ./setup.py install" "Install coptra package"
-rm -rf build  # remove build artifacts
+echo_stamp "Using ROS workspace coptra package only (no legacy install)"
 
 
 echo_stamp "Change permissions for catkin_ws"
@@ -347,22 +342,22 @@ chown -Rf orangepi:orangepi /opt/ros/noetic/lib/ 2>/dev/null || true
 cd /home/orangepi/catkin_ws
 echo_stamp "Update www"
 # Update www with roswww_static only if available (prefer workspace devel env), with debug and fallback copy
-safe_install "bash -lc '
+safe_install 'bash -lc "
   set -e
   if [ -f /home/orangepi/catkin_ws/devel/setup.bash ]; then
     source /home/orangepi/catkin_ws/devel/setup.bash
   else
     source /opt/ros/noetic/setup.bash
   fi
-  echo "DEBUG[www]: Using ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH"
+  echo \"DEBUG[www]: Using ROS_PACKAGE_PATH=\$ROS_PACKAGE_PATH\"
   if rospack find roswww_static >/dev/null 2>&1; then
-    echo "DEBUG[www]: roswww_static found at $(rospack find roswww_static)"
-    sudo -u orangepi rosrun roswww_static update || { echo "WARN[www]: roswww_static update failed"; exit 1; }
+    echo \"DEBUG[www]: roswww_static found at \$(rospack find roswww_static)\"
+    sudo -u orangepi rosrun roswww_static update || { echo \"WARN[www]: roswww_static update failed\"; exit 1; }
   else
-    echo "INFO[www]: roswww_static not found, will skip rosrun and try manual fallback"
+    echo \"INFO[www]: roswww_static not found, will skip rosrun and try manual fallback\"
     exit 2
   fi
-'" "Update www if roswww_static is installed" || {
+"' "Update www if roswww_static is installed" || {
   # Fallback: populate ~/.ros/www from package www folders
   echo_stamp "Fallback: populate /home/orangepi/.ros/www from package www folders"
   mkdir -p /home/orangepi/.ros/www/coptra /home/orangepi/.ros/www/coptra_blocks
@@ -503,7 +498,7 @@ export ROS_ROOT=/opt/ros/noetic
 export ROS_DISTRO=noetic
 export LD_LIBRARY_PATH=/opt/ros/noetic/lib:/home/orangepi/catkin_ws/devel/lib:\$LD_LIBRARY_PATH
 export ROS_PACKAGE_PATH=/opt/ros/noetic/share:/home/orangepi/catkin_ws/devel/share:\$ROS_PACKAGE_PATH
-export PYTHONPATH=/opt/ros/noetic/lib/python3/dist-packages:/home/orangepi/catkin_ws/devel/lib/python3/dist-packages:\$PYTHONPATH
+export PYTHONPATH=/home/orangepi/catkin_ws/devel/lib/python3/dist-packages:/opt/ros/noetic/lib/python3/dist-packages:\$PYTHONPATH
 export PATH=/opt/ros/noetic/bin:/home/orangepi/catkin_ws/devel/lib:\$PATH
 export CMAKE_PREFIX_PATH=/opt/ros/noetic:/home/orangepi/catkin_ws/devel:\$CMAKE_PREFIX_PATH
 source /opt/ros/\${ROS_DISTRO}/setup.bash
@@ -519,7 +514,7 @@ export ROS_ROOT=/opt/ros/noetic
 export ROS_DISTRO=noetic
 export LD_LIBRARY_PATH=/opt/ros/noetic/lib:/home/orangepi/catkin_ws/devel/lib:\$LD_LIBRARY_PATH
 export ROS_PACKAGE_PATH=/opt/ros/noetic/share:/home/orangepi/catkin_ws/devel/share:\$ROS_PACKAGE_PATH
-export PYTHONPATH=/opt/ros/noetic/lib/python3/dist-packages:/home/orangepi/catkin_ws/devel/lib/python3/dist-packages:\$PYTHONPATH
+export PYTHONPATH=/home/orangepi/catkin_ws/devel/lib/python3/dist-packages:/opt/ros/noetic/lib/python3/dist-packages:\$PYTHONPATH
 export PATH=/opt/ros/noetic/bin:/home/orangepi/catkin_ws/devel/lib:\$PATH
 export CMAKE_PREFIX_PATH=/opt/ros/noetic:/home/orangepi/catkin_ws/devel:\$CMAKE_PREFIX_PATH
 source /opt/ros/noetic/setup.bash
