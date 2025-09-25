@@ -81,6 +81,7 @@ get_image() {
 
 
 get_image ${IMAGE_PATH} ${SOURCE_IMAGE}
+export COPTRA_VERSION="1.0.0"
 
 # Resize image to maximum 7GB using the container's built-in resize functionality
 echo_stamp "Resizing image to maximum 7GB"

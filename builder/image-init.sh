@@ -38,11 +38,12 @@ echo_stamp() {
 
 echo_stamp "Write Coptra information"
 
-# Get version from coptra package.xml
-COPTRA_VERSION=$(grep -o '<version>[^<]*</version>' /home/orangepi/catkin_ws/src/coptra-ros/coptra/package.xml | sed 's/<version>\(.*\)<\/version>/\1/')
-if [ -z "$COPTRA_VERSION" ]; then
+# Get version from provided variable or use default
+if [ -n "$COPTRA_VERSION" ]; then
+    echo_stamp "Using provided COPTRA_VERSION: $COPTRA_VERSION"
+else
     COPTRA_VERSION="unknown"
-    echo_stamp "Warning: Could not extract version from package.xml, using 'unknown'" "ERROR"
+    echo_stamp "No version provided, using 'unknown'"
 fi
 # Coptra image version
 echo "$COPTRA_VERSION" > /etc/coptra_version
