@@ -19,20 +19,6 @@ set -e # exit on error, but don't echo commands (we'll handle errors manually)
 # Increase stack size to prevent segmentation faults during compilation
 ulimit -s unlimited 2>/dev/null || true
 
-# Debug: print basic system and python info
-echo_stamp "DEBUG: uname -a: $(uname -a)"
-echo_stamp "DEBUG: gcc --version: $(gcc --version | head -n1)"
-echo_stamp "DEBUG: python3 --version: $(python3 --version 2>&1)"
-
-REPO=$1
-REF=$2
-INSTALL_ROS_PACK_SOURCES=$3
-DISCOVER_ROS_PACK=$4
-NUMBER_THREADS=$5
-
-# Current ROS distribution
-ROS_DISTRO=noetic
-
 echo_stamp() {
   # TEMPLATE: echo_stamp <TEXT> <TYPE>
   # TYPE: SUCCESS, ERROR, INFO
@@ -52,6 +38,20 @@ echo_stamp() {
   esac
   echo -e ${TEXT}
 }
+# Debug: print basic system and python info
+echo_stamp "DEBUG: uname -a: $(uname -a)"
+echo_stamp "DEBUG: gcc --version: $(gcc --version | head -n1)"
+echo_stamp "DEBUG: python3 --version: $(python3 --version 2>&1)"
+
+REPO=$1
+REF=$2
+INSTALL_ROS_PACK_SOURCES=$3
+DISCOVER_ROS_PACK=$4
+NUMBER_THREADS=$5
+
+# Current ROS distribution
+ROS_DISTRO=noetic
+
 
 # https://gist.github.com/letmaik/caa0f6cc4375cbfcc1ff26bd4530c2a3
 # https://github.com/travis-ci/travis-build/blob/master/lib/travis/build/templates/header.sh
