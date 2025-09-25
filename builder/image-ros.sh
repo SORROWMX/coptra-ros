@@ -346,8 +346,34 @@ chown -Rf orangepi:orangepi /home/orangepi/catkin_ws
 chown -Rf orangepi:orangepi /opt/ros/noetic/lib/ 2>/dev/null || true
 cd /home/orangepi/catkin_ws
 echo_stamp "Update www"
-# Update www with roswww_static only if available
-safe_install "bash -lc 'source /opt/ros/noetic/setup.bash && rospack find roswww_static >/dev/null 2>&1 && sudo -u orangepi rosrun roswww_static update'" "Update www if roswww_static is installed"
+# Update www with roswww_static only if available (prefer workspace devel env), with debug and fallback copy
+safe_install "bash -lc '
+  set -e
+  if [ -f /home/orangepi/catkin_ws/devel/setup.bash ]; then
+    source /home/orangepi/catkin_ws/devel/setup.bash
+  else
+    source /opt/ros/noetic/setup.bash
+  fi
+  echo "DEBUG[www]: Using ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH"
+  if rospack find roswww_static >/dev/null 2>&1; then
+    echo "DEBUG[www]: roswww_static found at $(rospack find roswww_static)"
+    sudo -u orangepi rosrun roswww_static update || { echo "WARN[www]: roswww_static update failed"; exit 1; }
+  else
+    echo "INFO[www]: roswww_static not found, will skip rosrun and try manual fallback"
+    exit 2
+  fi
+'" "Update www if roswww_static is installed" || {
+  # Fallback: populate ~/.ros/www from package www folders
+  echo_stamp "Fallback: populate /home/orangepi/.ros/www from package www folders"
+  mkdir -p /home/orangepi/.ros/www/coptra /home/orangepi/.ros/www/coptra_blocks
+  if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra/www" ]; then
+    rsync -a --delete /home/orangepi/catkin_ws/src/coptra-ros/coptra/www/ /home/orangepi/.ros/www/coptra/
+  fi
+  if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www" ]; then
+    rsync -a --delete /home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www/ /home/orangepi/.ros/www/coptra_blocks/
+  fi
+  chown -R orangepi:orangepi /home/orangepi/.ros/www || true
+}
 
 
 echo_stamp "Setup nginx web files"
