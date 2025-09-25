@@ -113,6 +113,13 @@ source /opt/ros/${ROS_DISTRO}/setup.bash
 chown -R orangepi:orangepi /home/orangepi/catkin_ws/
 chmod -R 755 /home/orangepi/catkin_ws/
 
+# Ensure core ROS message packages are present (std_msgs, genmsg, etc.)
+echo_stamp "Ensuring ROS message packages are installed"
+if [ ! -f "/opt/ros/${ROS_DISTRO}/share/std_msgs/cmake/std_msgs-msg-paths.cmake" ]; then
+  safe_install "my_travis_retry apt-get update -y" "apt update"
+  safe_install "my_travis_retry apt-get install -y ros-${ROS_DISTRO}-std-msgs ros-${ROS_DISTRO}-message-generation ros-${ROS_DISTRO}-message-runtime ros-${ROS_DISTRO}-genmsg ros-${ROS_DISTRO}-gencpp ros-${ROS_DISTRO}-genpy" "Install ROS message packages"
+fi
+
 # Configure catkin workspace
 echo_stamp "Configuring catkin workspace"
 UNDERLAY="/opt/ros/${ROS_DISTRO}"
@@ -122,7 +129,8 @@ if [ -f "${UNDERLAY}/.catkin" ]; then
   catkin config --no-install --extend "${UNDERLAY}" --cmake-args \
     -DCMAKE_BUILD_TYPE=Release \
     -DCATKIN_ENABLE_TESTING=OFF \
-    -DBUILD_TESTING=OFF
+    -DBUILD_TESTING=OFF \
+    -DPYTHON_EXECUTABLE=/usr/bin/python3
 else
   echo_stamp "No .catkin in ${UNDERLAY}, using CMAKE_PREFIX_PATH fallback" "ERROR"
   CMAKE_PREFIX_ARG="-DCMAKE_PREFIX_PATH=${UNDERLAY}"
@@ -130,6 +138,7 @@ else
     -DCMAKE_BUILD_TYPE=Release \
     -DCATKIN_ENABLE_TESTING=OFF \
     -DBUILD_TESTING=OFF \
+    -DPYTHON_EXECUTABLE=/usr/bin/python3 \
     ${CMAKE_PREFIX_ARG}
 fi
 

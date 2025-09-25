@@ -152,7 +152,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
 #  INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-#  CATKIN_DEPENDS other_catkin_pkg
+  CATKIN_DEPENDS message_runtime std_msgs geometry_msgs sensor_msgs
 #  DEPENDS system_lib
 )
 
