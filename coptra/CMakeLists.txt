@@ -11,7 +11,6 @@ find_package(catkin REQUIRED COMPONENTS
   nodelet
   pluginlib
   roscpp
-  genmsg
   rospy
   std_msgs
   message_generation
@@ -33,6 +32,11 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # https://github.com/mavlink/mavros/blob/7f1a8/mavros/CMakeLists.txt#L42
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/usr/share/cmake/geographiclib")
 find_package(GeographicLib REQUIRED)
+
+# Force-enable C++/Python message generators if available
+find_package(gencpp REQUIRED)
+find_package(genpy REQUIRED)
+set(GENMSG_LANGS gencpp;genpy)
 
 # Workaround for OpenCV 3/4 support
 set(_opencv_version 4)
@@ -118,7 +122,11 @@ add_service_files(
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
-  std_msgs  # Or other packages containing msgs
+  std_msgs
+  geometry_msgs
+  sensor_msgs
+  
+  LANGS gencpp
 )
 
 ################################################
@@ -223,6 +231,11 @@ add_dependencies(coptra_led ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTE
 add_dependencies(shell ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_gencfg)
+
+# Also depend explicitly on C++ message generation target if it exists
+if (TARGET ${PROJECT_NAME}_generate_messages_cpp)
+  add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp)
+endif()
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

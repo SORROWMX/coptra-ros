@@ -107,6 +107,23 @@ echo_stamp "DEBUG: PATH=$PATH"
 echo_stamp "DEBUG: LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
 echo_stamp "DEBUG: PYTHONPATH=$PYTHONPATH"
 echo_stamp "DEBUG: CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
+echo_stamp "DEBUG: cmake --version: $(cmake --version | head -n1 2>/dev/null || echo 'cmake not found')"
+
+# Debug helper to inspect build state after a failure
+debug_build_state() {
+  local phase="$1"
+  echo_stamp "DEBUG[$phase]: Dump key env vars"
+  echo_stamp "DEBUG[$phase]: MAKEFLAGS=${MAKEFLAGS} CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL}"
+  echo_stamp "DEBUG[$phase]: GENMSG_LANGS=${GENMSG_LANGS}"
+  echo_stamp "DEBUG[$phase]: CATKIN_DEVEL_PREFIX=${CATKIN_DEVEL_PREFIX}"
+  echo_stamp "DEBUG[$phase]: Check generated headers under devel/include"
+  ls -l /home/orangepi/catkin_ws/devel/include 2>/dev/null | head -n 50 || true
+  ls -l /home/orangepi/catkin_ws/devel/include/coptra 2>/dev/null || true
+  echo_stamp "DEBUG[$phase]: Search for OpticalFlowArduPilot in build tree"
+  grep -R "OpticalFlowArduPilot" -n /home/orangepi/catkin_ws/build 2>/dev/null | head -n 50 || true
+  echo_stamp "DEBUG[$phase]: List coptra generate_messages targets (make help)"
+  (cd /home/orangepi/catkin_ws/build 2>/dev/null && make help | grep -E "coptra(_generate_messages|_gencpp)" || true)
+}
 
 
 
@@ -266,6 +283,7 @@ if ! safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH
   -DCATKIN_BLACKLIST_PACKAGES='aruco_pose;roswww_static' \
   -DCATKIN_WHITELIST_PACKAGES=''" "Build ROS packages with catkin_make"; then
     echo_stamp "catkin_make failed, trying selective builds" "ERROR"
+    debug_build_state "main"
     # Try building only coptra_blocks (some platforms need this separately)
     echo_stamp "DEBUG: Running selective build for coptra_blocks"
     safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH='${ROS_PACKAGE_PATH}' catkin_make -j1 \
@@ -300,6 +318,7 @@ if ! safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH
       -Dmessage_generation_DIR=/opt/ros/${ROS_DISTRO}/share/message_generation/cmake \
       -Dgenmsg_DIR=/opt/ros/${ROS_DISTRO}/share/genmsg/cmake \
       -DCATKIN_WHITELIST_PACKAGES='coptra'" "Build coptra only" || echo_stamp "coptra build failed, continuing" "ERROR"
+    debug_build_state "coptra"
 fi
 # Re-enable exit on error after build process
 set -e
