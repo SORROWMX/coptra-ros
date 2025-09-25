@@ -78,6 +78,13 @@ export ROS_DISTRO='noetic'
 export ROS_IP='127.0.0.1'
 source /opt/ros/${ROS_DISTRO}/setup.bash
 source /home/orangepi/catkin_ws/devel/setup.bash
+
+# Export all ROS environment variables for Python subprocesses
+export ROS_ROOT="/opt/ros/${ROS_DISTRO}"
+export ROS_PACKAGE_PATH="/opt/ros/${ROS_DISTRO}/share:/home/orangepi/catkin_ws/devel/share:${ROS_PACKAGE_PATH}"
+export PYTHONPATH="/home/orangepi/catkin_ws/devel/lib/python3/dist-packages:/opt/ros/${ROS_DISTRO}/lib/python3/dist-packages:${PYTHONPATH}"
+export LD_LIBRARY_PATH="/opt/ros/${ROS_DISTRO}/lib:/home/orangepi/catkin_ws/devel/lib:${LD_LIBRARY_PATH}"
+export CMAKE_PREFIX_PATH="/opt/ros/${ROS_DISTRO}:/home/orangepi/catkin_ws/devel:${CMAKE_PREFIX_PATH}"
 systemctl start roscore
 
 # Check if test directory exists
