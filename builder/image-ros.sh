@@ -129,11 +129,43 @@ echo_stamp "DEBUG: ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH"
 chown -R orangepi:orangepi /home/orangepi/catkin_ws/
 chmod -R 755 /home/orangepi/catkin_ws/
 
-# Ensure core ROS message packages are present (std_msgs, genmsg, etc.)
+# Ensure core ROS message packages are present (std_msgs, geometry_msgs, sensor_msgs, visualization_msgs, genmsg, etc.)
 echo_stamp "Ensuring ROS message packages are installed"
-if [ ! -f "/opt/ros/${ROS_DISTRO}/share/std_msgs/cmake/std_msgs-msg-paths.cmake" ]; then
+STD_MSGS_PATH="/opt/ros/${ROS_DISTRO}/share/std_msgs/cmake/std_msgs-msg-paths.cmake"
+GEOM_MSGS_PATH="/opt/ros/${ROS_DISTRO}/share/geometry_msgs/cmake/geometry_msgs-msg-paths.cmake"
+SENSOR_MSGS_PATH="/opt/ros/${ROS_DISTRO}/share/sensor_msgs/cmake/sensor_msgs-msg-paths.cmake"
+VIS_MSGS_PATH="/opt/ros/${ROS_DISTRO}/share/visualization_msgs/cmake/visualization_msgs-msg-paths.cmake"
+LED_MSGS_PATH="/opt/ros/${ROS_DISTRO}/share/led_msgs/cmake/led_msgs-msg-paths.cmake"
+MSG_GEN_CONFIG="/opt/ros/${ROS_DISTRO}/share/message_generation/cmake/message_generationConfig.cmake"
+GENMSG_CONFIG="/opt/ros/${ROS_DISTRO}/share/genmsg/cmake/genmsg-extras.cmake"
+echo_stamp "DEBUG: std_msgs-msg-paths exists? $(test -f "$STD_MSGS_PATH" && echo yes || echo no)"
+echo_stamp "DEBUG: geometry_msgs-msg-paths exists? $(test -f "$GEOM_MSGS_PATH" && echo yes || echo no)"
+echo_stamp "DEBUG: sensor_msgs-msg-paths exists? $(test -f "$SENSOR_MSGS_PATH" && echo yes || echo no)"
+echo_stamp "DEBUG: visualization_msgs-msg-paths exists? $(test -f "$VIS_MSGS_PATH" && echo yes || echo no)"
+echo_stamp "DEBUG: led_msgs-msg-paths exists? $(test -f "$LED_MSGS_PATH" && echo yes || echo no)"
+echo_stamp "DEBUG: message_generationConfig exists? $(test -f "$MSG_GEN_CONFIG" && echo yes || echo no)"
+echo_stamp "DEBUG: genmsg-extras exists? $(test -f "$GENMSG_CONFIG" && echo yes || echo no)"
+NEED_INSTALL=false
+if [ ! -f "$STD_MSGS_PATH" ] || [ ! -f "$GEOM_MSGS_PATH" ] || [ ! -f "$MSG_GEN_CONFIG" ] || [ ! -f "$GENMSG_CONFIG" ] || [ ! -f "$SENSOR_MSGS_PATH" ]; then
+  NEED_INSTALL=true
+fi
+if [ "$NEED_INSTALL" = true ]; then
   safe_install "my_travis_retry apt-get update -y" "apt update"
-  safe_install "my_travis_retry apt-get install -y ros-${ROS_DISTRO}-std-msgs ros-${ROS_DISTRO}-message-generation ros-${ROS_DISTRO}-message-runtime ros-${ROS_DISTRO}-genmsg ros-${ROS_DISTRO}-gencpp ros-${ROS_DISTRO}-genpy" "Install ROS message packages"
+  safe_install "my_travis_retry apt-get install -y \
+    ros-${ROS_DISTRO}-std-msgs \
+    ros-${ROS_DISTRO}-geometry-msgs \
+    ros-${ROS_DISTRO}-sensor-msgs \
+    ros-${ROS_DISTRO}-visualization-msgs \
+    ros-${ROS_DISTRO}-led-msgs \
+    ros-${ROS_DISTRO}-message-generation \
+    ros-${ROS_DISTRO}-message-runtime \
+    ros-${ROS_DISTRO}-genmsg \
+    ros-${ROS_DISTRO}-gencpp \
+    ros-${ROS_DISTRO}-genpy" "Install ROS message packages"
+  # Re-source after installing message toolchain
+  source /opt/ros/${ROS_DISTRO}/setup.bash
+  echo_stamp "DEBUG: Re-sourced after installing message packages"
+  echo_stamp "DEBUG: Using these files now: std_msgs=$(test -f "$STD_MSGS_PATH" && echo yes || echo no), geometry_msgs=$(test -f "$GEOM_MSGS_PATH" && echo yes || echo no), sensor_msgs=$(test -f "$SENSOR_MSGS_PATH" && echo yes || echo no), visualization_msgs=$(test -f "$VIS_MSGS_PATH" && echo yes || echo no), led_msgs=$(test -f "$LED_MSGS_PATH" && echo yes || echo no), message_generation=$(test -f "$MSG_GEN_CONFIG" && echo yes || echo no), genmsg=$(test -f "$GENMSG_CONFIG" && echo yes || echo no)"
 fi
 
 # Configure catkin workspace
@@ -166,11 +198,32 @@ echo_stamp "DEBUG: Exported ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH"
 rm -rf /home/orangepi/catkin_ws/build /home/orangepi/catkin_ws/devel
 echo_stamp "DEBUG: Cleaned build/ and devel/"
 
+# Pre-create devel msg-path symlinks so genmsg finds msg-paths even if it prefers devel
+DEVEL_SHARE="/home/orangepi/catkin_ws/devel/share"
+declare -A MSG_PKGS
+MSG_PKGS=( \
+  [std_msgs]="/opt/ros/${ROS_DISTRO}/share/std_msgs/cmake/std_msgs-msg-paths.cmake" \
+  [geometry_msgs]="/opt/ros/${ROS_DISTRO}/share/geometry_msgs/cmake/geometry_msgs-msg-paths.cmake" \
+  [sensor_msgs]="/opt/ros/${ROS_DISTRO}/share/sensor_msgs/cmake/sensor_msgs-msg-paths.cmake" \
+  [visualization_msgs]="/opt/ros/${ROS_DISTRO}/share/visualization_msgs/cmake/visualization_msgs-msg-paths.cmake" \
+  [led_msgs]="/opt/ros/${ROS_DISTRO}/share/led_msgs/cmake/led_msgs-msg-paths.cmake" \
+)
+for pkg in "${!MSG_PKGS[@]}"; do
+  src_path="${MSG_PKGS[$pkg]}"
+  mkdir -p "${DEVEL_SHARE}/${pkg}/cmake"
+  if [ -f "${src_path}" ]; then
+    ln -sf "${src_path}" "${DEVEL_SHARE}/${pkg}/cmake/${pkg}-msg-paths.cmake"
+    echo_stamp "DEBUG: Linked ${pkg}-msg-paths.cmake into devel/share"
+  else
+    echo_stamp "DEBUG: ${pkg}-msg-paths.cmake missing at ${src_path}" "ERROR"
+  fi
+done
+
 # (catkin_tools blacklist removed; using catkin_make CMake args instead)
 
 # Build with catkin_make
 echo_stamp "Building ROS packages with catkin_make"
-# Add memory and build optimizations to prevent segfaults
+# Add memory and build optimizations to prevent segfaults during compilation
 export MAKEFLAGS="-j1"  # Single threaded build to reduce memory usage
 export CMAKE_BUILD_PARALLEL_LEVEL=1  # Limit parallel compilation
 # Add environment variables to help with message generation on ARM
@@ -194,7 +247,7 @@ echo_stamp "Attempting build with catkin_make"
 # Temporarily disable exit on error for build process
 set +e
 # Debug: first configure command to be executed
-echo_stamp "DEBUG: Running catkin_make with args: -j1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' -DCATKIN_ENABLE_TESTING=OFF -DBUILD_TESTING=OFF -DPYTHON_EXECUTABLE=/usr/bin/python3 ${CMAKE_PREFIX_ARG} -Dcatkin_DIR=/opt/ros/${ROS_DISTRO}/share/catkin/cmake -Dstd_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/std_msgs/cmake -Dgeometry_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/geometry_msgs/cmake -DCATKIN_BLACKLIST_PACKAGES='aruco_pose;roswww_static' -DCATKIN_WHITELIST_PACKAGES=''"
+echo_stamp "DEBUG: Running catkin_make with args: -j1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' -DCATKIN_ENABLE_TESTING=OFF -DBUILD_TESTING=OFF -DPYTHON_EXECUTABLE=/usr/bin/python3 ${CMAKE_PREFIX_ARG} -Dcatkin_DIR=/opt/ros/${ROS_DISTRO}/share/catkin/cmake -Dstd_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/std_msgs/cmake -Dgeometry_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/geometry_msgs/cmake -Dsensor_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/sensor_msgs/cmake -Dvisualization_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/visualization_msgs/cmake -Dled_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/led_msgs/cmake -Dmessage_generation_DIR=/opt/ros/${ROS_DISTRO}/share/message_generation/cmake -Dgenmsg_DIR=/opt/ros/${ROS_DISTRO}/share/genmsg/cmake -DCATKIN_BLACKLIST_PACKAGES='aruco_pose;roswww_static' -DCATKIN_WHITELIST_PACKAGES=''"
 if ! safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH='${ROS_PACKAGE_PATH}' catkin_make -j1 \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CXX_FLAGS='-O1 -g0' \
@@ -205,6 +258,11 @@ if ! safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH
   -Dcatkin_DIR=/opt/ros/${ROS_DISTRO}/share/catkin/cmake \
   -Dstd_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/std_msgs/cmake \
   -Dgeometry_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/geometry_msgs/cmake \
+  -Dsensor_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/sensor_msgs/cmake \
+  -Dvisualization_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/visualization_msgs/cmake \
+  -Dled_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/led_msgs/cmake \
+  -Dmessage_generation_DIR=/opt/ros/${ROS_DISTRO}/share/message_generation/cmake \
+  -Dgenmsg_DIR=/opt/ros/${ROS_DISTRO}/share/genmsg/cmake \
   -DCATKIN_BLACKLIST_PACKAGES='aruco_pose;roswww_static' \
   -DCATKIN_WHITELIST_PACKAGES=''" "Build ROS packages with catkin_make"; then
     echo_stamp "catkin_make failed, trying selective builds" "ERROR"
@@ -219,7 +277,12 @@ if ! safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH
       ${CMAKE_PREFIX_ARG} \
       -Dstd_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/std_msgs/cmake \
       -Dgeometry_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/geometry_msgs/cmake \
+      -Dsensor_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/sensor_msgs/cmake \
+      -Dvisualization_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/visualization_msgs/cmake \
+      -Dled_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/led_msgs/cmake \
       -Dcatkin_DIR=/opt/ros/${ROS_DISTRO}/share/catkin/cmake \
+      -Dmessage_generation_DIR=/opt/ros/${ROS_DISTRO}/share/message_generation/cmake \
+      -Dgenmsg_DIR=/opt/ros/${ROS_DISTRO}/share/genmsg/cmake \
       -DCATKIN_WHITELIST_PACKAGES='coptra_blocks'" "Build coptra_blocks only" || echo_stamp "coptra_blocks build failed, continuing" "ERROR"
 
     # Try building only coptra
@@ -234,6 +297,8 @@ if ! safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH
       -Dstd_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/std_msgs/cmake \
       -Dgeometry_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/geometry_msgs/cmake \
       -Dcatkin_DIR=/opt/ros/${ROS_DISTRO}/share/catkin/cmake \
+      -Dmessage_generation_DIR=/opt/ros/${ROS_DISTRO}/share/message_generation/cmake \
+      -Dgenmsg_DIR=/opt/ros/${ROS_DISTRO}/share/genmsg/cmake \
       -DCATKIN_WHITELIST_PACKAGES='coptra'" "Build coptra only" || echo_stamp "coptra build failed, continuing" "ERROR"
 fi
 # Re-enable exit on error after build process
