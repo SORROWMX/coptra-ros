@@ -164,6 +164,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
 # include
+  ${CATKIN_DEVEL_PREFIX}/include
   ${catkin_INCLUDE_DIRS}
   ${GeographicLib_INCLUDE_DIRS}
 )
