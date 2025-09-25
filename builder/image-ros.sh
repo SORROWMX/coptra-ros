@@ -13,6 +13,25 @@
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
 #
+echo_stamp() {
+  # TEMPLATE: echo_stamp <TEXT> <TYPE>
+  # TYPE: SUCCESS, ERROR, INFO
+
+  # More info there https://www.shellhacks.com/ru/bash-colors/
+
+  TEXT="$(date '+[%Y-%m-%d %H:%M:%S]') $1"
+  TEXT="\e[1m$TEXT\e[0m" # BOLD
+
+  case "$2" in
+    SUCCESS)
+    TEXT="\e[32m${TEXT}\e[0m";; # GREEN
+    ERROR)
+    TEXT="\e[31m${TEXT}\e[0m";; # RED
+    *)
+    TEXT="\e[34m${TEXT}\e[0m";; # BLUE
+  esac
+  echo -e ${TEXT}
+}
 
 set -e # exit on error, but don't echo commands (we'll handle errors manually)
 
@@ -33,25 +52,6 @@ NUMBER_THREADS=$5
 # Current ROS distribution
 ROS_DISTRO=noetic
 
-echo_stamp() {
-  # TEMPLATE: echo_stamp <TEXT> <TYPE>
-  # TYPE: SUCCESS, ERROR, INFO
-
-  # More info there https://www.shellhacks.com/ru/bash-colors/
-
-  TEXT="$(date '+[%Y-%m-%d %H:%M:%S]') $1"
-  TEXT="\e[1m$TEXT\e[0m" # BOLD
-
-  case "$2" in
-    SUCCESS)
-    TEXT="\e[32m${TEXT}\e[0m";; # GREEN
-    ERROR)
-    TEXT="\e[31m${TEXT}\e[0m";; # RED
-    *)
-    TEXT="\e[34m${TEXT}\e[0m";; # BLUE
-  esac
-  echo -e ${TEXT}
-}
 
 # https://gist.github.com/letmaik/caa0f6cc4375cbfcc1ff26bd4530c2a3
 # https://github.com/travis-ci/travis-build/blob/master/lib/travis/build/templates/header.sh
