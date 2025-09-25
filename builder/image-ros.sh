@@ -19,6 +19,20 @@ set -e # exit on error, but don't echo commands (we'll handle errors manually)
 # Increase stack size to prevent segmentation faults during compilation
 ulimit -s unlimited 2>/dev/null || true
 
+# Debug: print basic system and python info
+echo_stamp "DEBUG: uname -a: $(uname -a)"
+echo_stamp "DEBUG: gcc --version: $(gcc --version | head -n1)"
+echo_stamp "DEBUG: python3 --version: $(python3 --version 2>&1)"
+
+REPO=$1
+REF=$2
+INSTALL_ROS_PACK_SOURCES=$3
+DISCOVER_ROS_PACK=$4
+NUMBER_THREADS=$5
+
+# Current ROS distribution
+ROS_DISTRO=noetic
+
 echo_stamp() {
   # TEMPLATE: echo_stamp <TEXT> <TYPE>
   # TYPE: SUCCESS, ERROR, INFO
@@ -38,20 +52,6 @@ echo_stamp() {
   esac
   echo -e ${TEXT}
 }
-# Debug: print basic system and python info
-echo_stamp "DEBUG: uname -a: $(uname -a)"
-echo_stamp "DEBUG: gcc --version: $(gcc --version | head -n1)"
-echo_stamp "DEBUG: python3 --version: $(python3 --version 2>&1)"
-
-REPO=$1
-REF=$2
-INSTALL_ROS_PACK_SOURCES=$3
-DISCOVER_ROS_PACK=$4
-NUMBER_THREADS=$5
-
-# Current ROS distribution
-ROS_DISTRO=noetic
-
 
 # https://gist.github.com/letmaik/caa0f6cc4375cbfcc1ff26bd4530c2a3
 # https://github.com/travis-ci/travis-build/blob/master/lib/travis/build/templates/header.sh
@@ -155,6 +155,17 @@ echo_stamp "DEBUG: After ensuring catkin"
 echo_stamp "DEBUG: which catkin_make: $(command -v catkin_make || echo 'not found')"
 echo_stamp "DEBUG: catkin CMake config present? $(test -f /opt/ros/${ROS_DISTRO}/share/catkin/cmake/catkinConfig.cmake && echo yes || echo no)"
 echo_stamp "DEBUG: ls /opt/ros/${ROS_DISTRO}/share/catkin/cmake: $(ls -1 /opt/ros/${ROS_DISTRO}/share/catkin/cmake 2>/dev/null | tr '\n' ' ')"
+
+# Ensure CMake and ROS search paths are explicitly set for this shell
+export CMAKE_PREFIX_PATH="/opt/ros/${ROS_DISTRO}:${CMAKE_PREFIX_PATH}"
+export ROS_PACKAGE_PATH="/opt/ros/${ROS_DISTRO}/share:/home/orangepi/catkin_ws/src:${ROS_PACKAGE_PATH}"
+echo_stamp "DEBUG: Exported CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
+echo_stamp "DEBUG: Exported ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH"
+
+# Start from a clean build to avoid stale cache issues
+rm -rf /home/orangepi/catkin_ws/build /home/orangepi/catkin_ws/devel
+echo_stamp "DEBUG: Cleaned build/ and devel/"
+
 # (catkin_tools blacklist removed; using catkin_make CMake args instead)
 
 # Build with catkin_make
@@ -184,7 +195,7 @@ echo_stamp "Attempting build with catkin_make"
 set +e
 # Debug: first configure command to be executed
 echo_stamp "DEBUG: Running catkin_make with args: -j1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' -DCATKIN_ENABLE_TESTING=OFF -DBUILD_TESTING=OFF -DPYTHON_EXECUTABLE=/usr/bin/python3 ${CMAKE_PREFIX_ARG} -DCATKIN_BLACKLIST_PACKAGES='aruco_pose;roswww_static' -DCATKIN_WHITELIST_PACKAGES=''"
-if ! safe_install "catkin_make -j1 \
+if ! safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH='${ROS_PACKAGE_PATH}' catkin_make -j1 \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CXX_FLAGS='-O1 -g0' \
   -DCATKIN_ENABLE_TESTING=OFF \
@@ -196,7 +207,7 @@ if ! safe_install "catkin_make -j1 \
     echo_stamp "catkin_make failed, trying selective builds" "ERROR"
     # Try building only coptra_blocks (some platforms need this separately)
     echo_stamp "DEBUG: Running selective build for coptra_blocks"
-    safe_install "catkin_make -j1 \
+    safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH='${ROS_PACKAGE_PATH}' catkin_make -j1 \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_CXX_FLAGS='-O1 -g0' \
       -DCATKIN_ENABLE_TESTING=OFF \
@@ -207,7 +218,7 @@ if ! safe_install "catkin_make -j1 \
 
     # Try building only coptra
     echo_stamp "DEBUG: Running selective build for coptra"
-    safe_install "catkin_make -j1 \
+    safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH='${ROS_PACKAGE_PATH}' catkin_make -j1 \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_CXX_FLAGS='-O1 -g0' \
       -DCATKIN_ENABLE_TESTING=OFF \
