@@ -4,8 +4,18 @@ Requires=roscore.service
 
 [Service]
 User=orangepi
-ExecStart=/bin/bash -c ". /home/orangepi/catkin_ws/devel/setup.sh; \
-                      ROS_HOSTNAME=`hostname`.local exec stdbuf -o L roslaunch coptra coptra.launch --wait --screen --skip-log-check \
+ExecStart=/bin/bash -c "source /opt/ros/noetic/setup.bash; \
+                      source /home/orangepi/catkin_ws/devel/setup.bash; \
+                      export ROS_HOSTNAME=localhost; \
+                      export ROS_IP=127.0.0.1; \
+                      export ROS_ROOT=/opt/ros/noetic; \
+                      export ROS_DISTRO=noetic; \
+                      export LD_LIBRARY_PATH=/opt/ros/noetic/lib:/home/orangepi/catkin_ws/devel/lib:$LD_LIBRARY_PATH; \
+                      export ROS_PACKAGE_PATH=/opt/ros/noetic/share:/home/orangepi/catkin_ws/devel/share:$ROS_PACKAGE_PATH; \
+                      export PYTHONPATH=/opt/ros/noetic/lib/python3/dist-packages:/home/orangepi/catkin_ws/devel/lib/python3/dist-packages:$PYTHONPATH; \
+                      export PATH=/opt/ros/noetic/bin:/home/orangepi/catkin_ws/devel/lib:$PATH; \
+                      export CMAKE_PREFIX_PATH=/opt/ros/noetic:/home/orangepi/catkin_ws/devel:$CMAKE_PREFIX_PATH; \
+                      exec stdbuf -o L roslaunch coptra coptra.launch --wait --screen --skip-log-check \
                       2> >(tee /tmp/coptra.err)"
 
 ExecStartPre=+rm /var/log/coptra.log

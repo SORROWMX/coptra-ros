@@ -115,8 +115,11 @@ chmod -R 755 /home/orangepi/catkin_ws/
 
 # Configure catkin workspace
 echo_stamp "Configuring catkin workspace"
-catkin config --install --install-space /opt/ros/noetic \
-  --cmake-args -DCMAKE_BUILD_TYPE=Release -DCATKIN_ENABLE_TESTING=OFF -DBUILD_TESTING=OFF
+catkin config --no-install --cmake-args \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCATKIN_ENABLE_TESTING=OFF \
+  -DBUILD_TESTING=OFF \
+  -DCMAKE_PREFIX_PATH="/opt/ros/noetic"
 
 # Build with catkin build
 echo_stamp "Building ROS packages with catkin build"
@@ -143,7 +146,10 @@ ulimit -s unlimited 2>/dev/null || true  # Unlimited stack size
 echo_stamp "Attempting full build of all packages"
 # Temporarily disable exit on error for build process
 set +e
-if ! safe_install "catkin build --jobs 1 --continue-on-failure --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0'" "Build ROS packages"; then
+if ! safe_install "catkin build --jobs 1 --continue-on-failure \
+  --cmake-args -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_FLAGS='-O2 -g0' \
+  -DCMAKE_PREFIX_PATH="/opt/ros/noetic"" "Build ROS packages"; then
     echo_stamp "First build attempt failed, trying with coptra_blocks excluded" "ERROR"
     # Try building without coptra_blocks to avoid segfault
     echo_stamp "Trying to build packages excluding coptra_blocks"
@@ -214,6 +220,7 @@ rm -rf build  # remove build artifacts
 
 echo_stamp "Change permissions for catkin_ws"
 chown -Rf orangepi:orangepi /home/orangepi/catkin_ws
+chown -Rf orangepi:orangepi /opt/ros/noetic/lib/ 2>/dev/null || true
 cd /home/orangepi/catkin_ws
 echo_stamp "Update www"
 # Update www with roswww_static
@@ -341,11 +348,39 @@ echo_stamp "Setup ROS environment"
 cat << EOF >> /home/orangepi/.bashrc
 LANG='C.UTF-8'
 LC_ALL='C.UTF-8'
-export ROS_HOSTNAME=$(hostname).local
-source /opt/ros/${ROS_DISTRO}/setup.bash
+export ROS_HOSTNAME=localhost
+export ROS_IP=127.0.0.1
+export ROS_ROOT=/opt/ros/noetic
+export ROS_DISTRO=noetic
+export LD_LIBRARY_PATH=/opt/ros/noetic/lib:/home/orangepi/catkin_ws/devel/lib:\$LD_LIBRARY_PATH
+export ROS_PACKAGE_PATH=/opt/ros/noetic/share:/home/orangepi/catkin_ws/devel/share:\$ROS_PACKAGE_PATH
+export PYTHONPATH=/opt/ros/noetic/lib/python3/dist-packages:/home/orangepi/catkin_ws/devel/lib/python3/dist-packages:\$PYTHONPATH
+export PATH=/opt/ros/noetic/bin:/home/orangepi/catkin_ws/devel/lib:\$PATH
+export CMAKE_PREFIX_PATH=/opt/ros/noetic:/home/orangepi/catkin_ws/devel:\$CMAKE_PREFIX_PATH
+source /opt/ros/\${ROS_DISTRO}/setup.bash
 source /home/orangepi/catkin_ws/devel/setup.bash
 EOF
 
+# Also set up for root user
+cat << EOF >> /root/.bashrc
+# Comprehensive ROS environment setup
+export ROS_HOSTNAME=localhost
+export ROS_IP=127.0.0.1
+export ROS_ROOT=/opt/ros/noetic
+export ROS_DISTRO=noetic
+export LD_LIBRARY_PATH=/opt/ros/noetic/lib:/home/orangepi/catkin_ws/devel/lib:\$LD_LIBRARY_PATH
+export ROS_PACKAGE_PATH=/opt/ros/noetic/share:/home/orangepi/catkin_ws/devel/share:\$ROS_PACKAGE_PATH
+export PYTHONPATH=/opt/ros/noetic/lib/python3/dist-packages:/home/orangepi/catkin_ws/devel/lib/python3/dist-packages:\$PYTHONPATH
+export PATH=/opt/ros/noetic/bin:/home/orangepi/catkin_ws/devel/lib:\$PATH
+export CMAKE_PREFIX_PATH=/opt/ros/noetic:/home/orangepi/catkin_ws/devel:\$CMAKE_PREFIX_PATH
+source /opt/ros/noetic/setup.bash
+source /home/orangepi/catkin_ws/devel/setup.bash
+EOF
+
+echo_stamp "Reload bashrc to apply environment variables"
+# Reload bashrc for current session
+source /home/orangepi/.bashrc
+source /root/.bashrc
 
 apt-get clean -qq > /dev/null
 

@@ -110,6 +110,10 @@ mkdir -p /home/orangepi/.ssh
 chown orangepi:orangepi /home/orangepi/.ssh
 chmod 700 /home/orangepi/.ssh
 
+    # Create SSH host keys before starting service
+    echo_stamp "Creating SSH host keys"
+    ssh-keygen -A
+    
     # Enable SSH service (use only ssh.service for modern OpenSSH)
     systemctl disable sshd.socket || true
     systemctl disable sshd.service || true

@@ -1,4 +1,0 @@
-config/coptra_config.yaml /etc/coptra/
-generated_launch/*.launch /opt/ros/noetic/share/coptra/launch/
-scripts/config_manager.py /opt/ros/noetic/share/coptra/scripts/
-scripts/setup_config.sh /opt/ros/noetic/share/coptra/scripts/
