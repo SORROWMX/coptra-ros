@@ -121,25 +121,12 @@ if [ ! -f "/opt/ros/${ROS_DISTRO}/share/std_msgs/cmake/std_msgs-msg-paths.cmake"
 fi
 
 # Configure catkin workspace
-echo_stamp "Configuring catkin workspace"
+echo_stamp "Ensuring catkin (catkin_make) is available"
 UNDERLAY="/opt/ros/${ROS_DISTRO}"
-CMAKE_PREFIX_ARG=""
-if [ -f "${UNDERLAY}/.catkin" ]; then
-  echo_stamp "Found catkin underlay at ${UNDERLAY}, extending it"
-  catkin config --no-install --extend "${UNDERLAY}" --cmake-args \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCATKIN_ENABLE_TESTING=OFF \
-    -DBUILD_TESTING=OFF \
-    -DPYTHON_EXECUTABLE=/usr/bin/python3
-else
-  echo_stamp "No .catkin in ${UNDERLAY}, using CMAKE_PREFIX_PATH fallback" "ERROR"
-  CMAKE_PREFIX_ARG="-DCMAKE_PREFIX_PATH=${UNDERLAY}"
-  catkin config --no-install --cmake-args \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCATKIN_ENABLE_TESTING=OFF \
-    -DBUILD_TESTING=OFF \
-    -DPYTHON_EXECUTABLE=/usr/bin/python3 \
-    ${CMAKE_PREFIX_ARG}
+CMAKE_PREFIX_ARG="-DCMAKE_PREFIX_PATH=${UNDERLAY}"
+if [ ! -x "${UNDERLAY}/bin/catkin_make" ] || [ ! -f "${UNDERLAY}/share/catkin/cmake/catkinConfig.cmake" ]; then
+  safe_install "my_travis_retry apt-get update -y" "apt update"
+  safe_install "my_travis_retry apt-get install -y ros-${ROS_DISTRO}-catkin" "Install ros-${ROS_DISTRO}-catkin"
 fi
 
 # Persist blacklist in catkin config
