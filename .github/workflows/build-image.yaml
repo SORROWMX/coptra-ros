@@ -31,7 +31,7 @@ jobs:
           cd images && sudo chmod -R 777 . && zip -9 coptra-ros-image.zip coptra-ros_*.img && ls -l . && unzip -l coptra-ros-image.zip
       # Skip artifacts upload due to storage quota - use release instead
       - name: Create development release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: ${{ github.event_name != 'release' }}
         with:
           tag_name: dev-${{ github.sha }}
@@ -46,7 +46,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Upload image to release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: ${{ github.event_name == 'release' }}
         with:
           files: images/coptra-ros-image.zip
