@@ -473,11 +473,20 @@ pip3 --version
 echo_stamp "Install and enable Butterfly (web terminal)"
 # Remove EXTERNALLY-MANAGED restriction for pip
 rm -f /usr/lib/python3.11/EXTERNALLY-MANAGED
-# Install butterfly as orangepi user in their local bin directory
-sudo -u orangepi pip3 install --user butterfly butterfly[systemd]
-# Enable butterfly service (already copied by image-build.sh)
-systemctl enable butterfly.service
-echo_stamp "butterfly.service enabled"
+# Install butterfly as orangepi user in their local bin directory (without extras)
+if sudo -u orangepi pip3 install --user --no-cache-dir butterfly==3.2.5; then
+    echo_stamp "Butterfly installed for orangepi" "SUCCESS"
+else
+    echo_stamp "Butterfly install failed, retrying with latest" "ERROR"
+    sudo -u orangepi pip3 install --user --no-cache-dir butterfly || true
+fi
+# Enable butterfly service only if installed
+if [ -x "/home/orangepi/.local/bin/butterfly.server.py" ]; then
+    systemctl enable butterfly.service
+    echo_stamp "butterfly.service enabled"
+else
+    echo_stamp "Butterfly binary not found; skipping service enable" "ERROR"
+fi
 
 echo_stamp "Install ws281x library"
 my_travis_retry pip3 install --prefer-binary rpi_ws281x
