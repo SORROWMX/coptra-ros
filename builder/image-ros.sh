@@ -115,10 +115,23 @@ chmod -R 755 /home/orangepi/catkin_ws/
 
 # Configure catkin workspace
 echo_stamp "Configuring catkin workspace"
-catkin config --no-install --extend /opt/ros/${ROS_DISTRO} --cmake-args \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCATKIN_ENABLE_TESTING=OFF \
-  -DBUILD_TESTING=OFF
+UNDERLAY="/opt/ros/${ROS_DISTRO}"
+CMAKE_PREFIX_ARG=""
+if [ -f "${UNDERLAY}/.catkin" ]; then
+  echo_stamp "Found catkin underlay at ${UNDERLAY}, extending it"
+  catkin config --no-install --extend "${UNDERLAY}" --cmake-args \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCATKIN_ENABLE_TESTING=OFF \
+    -DBUILD_TESTING=OFF
+else
+  echo_stamp "No .catkin in ${UNDERLAY}, using CMAKE_PREFIX_PATH fallback" "ERROR"
+  CMAKE_PREFIX_ARG="-DCMAKE_PREFIX_PATH=${UNDERLAY}"
+  catkin config --no-install --cmake-args \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCATKIN_ENABLE_TESTING=OFF \
+    -DBUILD_TESTING=OFF \
+    ${CMAKE_PREFIX_ARG}
+fi
 
 # Build with catkin build
 echo_stamp "Building ROS packages with catkin build"
@@ -145,12 +158,12 @@ ulimit -s unlimited 2>/dev/null || true  # Unlimited stack size
 echo_stamp "Attempting full build of all packages"
 # Temporarily disable exit on error for build process
 set +e
-if ! safe_install "catkin build --jobs 1 --continue-on-failure --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0'" "Build ROS packages"; then
+if ! safe_install "catkin build --jobs 1 --continue-on-failure --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0' ${CMAKE_PREFIX_ARG}" "Build ROS packages"; then
     echo_stamp "First build attempt failed, trying with coptra_blocks excluded" "ERROR"
     # Try building without coptra_blocks to avoid segfault
     echo_stamp "Trying to build packages excluding coptra_blocks"
     # Build only specific packages, excluding problematic ones
-    safe_install "catkin build --jobs 1 --continue-on-failure coptra roswww_static --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0'" "Build core packages only"
+    safe_install "catkin build coptra roswww_static --jobs 1 --continue-on-failure --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O2 -g0' ${CMAKE_PREFIX_ARG}" "Build core packages only"
     
     # If that works, try building coptra_blocks separately with more aggressive memory limits
     if [ $? -eq 0 ]; then
@@ -162,7 +175,7 @@ if ! safe_install "catkin build --jobs 1 --continue-on-failure --cmake-args -DCM
         echo 1 > /proc/sys/vm/drop_caches 2>/dev/null || true
         
         # Try building coptra_blocks with single thread and no parallel jobs
-        if ! safe_install "catkin build coptra_blocks --jobs 1 --continue-on-failure --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0'" "Build coptra_blocks with memory limits"; then
+        if ! safe_install "catkin build coptra_blocks --jobs 1 --continue-on-failure --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' ${CMAKE_PREFIX_ARG}" "Build coptra_blocks with memory limits"; then
             echo_stamp "catkin build failed, trying catkin_make_isolated for coptra_blocks" "ERROR"
             # Fallback to catkin_make_isolated which is more stable on ARM
             safe_install "catkin_make_isolated --install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' --pkg coptra_blocks" "Build coptra_blocks with catkin_make_isolated" || echo_stamp "catkin_make_isolated for coptra_blocks failed, continuing" "ERROR"
@@ -172,7 +185,7 @@ if ! safe_install "catkin build --jobs 1 --continue-on-failure --cmake-args -DCM
         echo_stamp "Trying to build aruco_pose with unlimited stack"
         ulimit -s unlimited 2>/dev/null || true  # Unlimited stack size
         echo 1 > /proc/sys/vm/drop_caches 2>/dev/null || true
-        if ! safe_install "catkin build aruco_pose --jobs 1 --continue-on-failure --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0'" "Build aruco_pose with memory limits"; then
+        if ! safe_install "catkin build aruco_pose --jobs 1 --continue-on-failure --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' ${CMAKE_PREFIX_ARG}" "Build aruco_pose with memory limits"; then
             echo_stamp "catkin build failed, trying catkin_make_isolated for aruco_pose" "ERROR"
             # Fallback to catkin_make_isolated for aruco_pose
             safe_install "catkin_make_isolated --install --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' --pkg aruco_pose" "Build aruco_pose with catkin_make_isolated" || echo_stamp "catkin_make_isolated for aruco_pose failed, continuing" "ERROR"
@@ -181,16 +194,16 @@ if ! safe_install "catkin build --jobs 1 --continue-on-failure --cmake-args -DCM
         echo_stamp "Core packages build failed, trying individual package builds" "ERROR"
         # Last resort: try building each package individually
         echo_stamp "Attempting to build coptra package individually"
-        safe_install "catkin build coptra --jobs 1 --continue-on-failure --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0'" "Build coptra individually" || echo_stamp "coptra build failed, continuing" "ERROR"
+        safe_install "catkin build coptra --jobs 1 --continue-on-failure --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' ${CMAKE_PREFIX_ARG}" "Build coptra individually" || echo_stamp "coptra build failed, continuing" "ERROR"
         
         echo_stamp "Attempting to build roswww_static package individually"
-        safe_install "catkin build roswww_static --jobs 1 --continue-on-failure --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0'" "Build roswww_static individually" || echo_stamp "roswww_static build failed, continuing" "ERROR"
+        safe_install "catkin build roswww_static --jobs 1 --continue-on-failure --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' ${CMAKE_PREFIX_ARG}" "Build roswww_static individually" || echo_stamp "roswww_static build failed, continuing" "ERROR"
         
         echo_stamp "Attempting to build aruco_pose package individually"
-        safe_install "catkin build aruco_pose --jobs 1 --continue-on-failure --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0'" "Build aruco_pose individually" || echo_stamp "aruco_pose build failed, continuing" "ERROR"
+        safe_install "catkin build aruco_pose --jobs 1 --continue-on-failure --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' ${CMAKE_PREFIX_ARG}" "Build aruco_pose individually" || echo_stamp "aruco_pose build failed, continuing" "ERROR"
         
         echo_stamp "Attempting to build coptra_blocks package individually"
-        safe_install "catkin build coptra_blocks --jobs 1 --continue-on-failure --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0'" "Build coptra_blocks individually" || echo_stamp "coptra_blocks build failed, continuing" "ERROR"
+        safe_install "catkin build coptra_blocks --jobs 1 --continue-on-failure --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' ${CMAKE_PREFIX_ARG}" "Build coptra_blocks individually" || echo_stamp "coptra_blocks build failed, continuing" "ERROR"
     fi
 fi
 # Re-enable exit on error after build process
