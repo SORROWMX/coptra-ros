@@ -19,6 +19,11 @@ set -e # exit on error, but don't echo commands (we'll handle errors manually)
 # Increase stack size to prevent segmentation faults during compilation
 ulimit -s unlimited 2>/dev/null || true
 
+# Debug: print basic system and python info
+echo_stamp "DEBUG: uname -a: $(uname -a)"
+echo_stamp "DEBUG: gcc --version: $(gcc --version | head -n1)"
+echo_stamp "DEBUG: python3 --version: $(python3 --version 2>&1)"
+
 REPO=$1
 REF=$2
 INSTALL_ROS_PACK_SOURCES=$3
@@ -97,6 +102,12 @@ safe_install() {
 
 export ROS_IP='127.0.0.1' # needed for running tests
 
+# Debug: show key env vars
+echo_stamp "DEBUG: PATH=$PATH"
+echo_stamp "DEBUG: LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+echo_stamp "DEBUG: PYTHONPATH=$PYTHONPATH"
+echo_stamp "DEBUG: CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
+
 
 
 
@@ -110,6 +121,11 @@ cd /home/orangepi/catkin_ws
 safe_install "my_travis_retry pip3 install wheel" "Install pip wheel"
 safe_install "my_travis_retry pip3 install -r /home/orangepi/catkin_ws/src/coptra-ros/coptra/requirements.txt" "Install Python requirements"
 source /opt/ros/${ROS_DISTRO}/setup.bash
+# Debug: after sourcing ROS
+echo_stamp "DEBUG: After source /opt/ros/${ROS_DISTRO}/setup.bash"
+echo_stamp "DEBUG: which catkin_make: $(command -v catkin_make || echo 'not found')"
+echo_stamp "DEBUG: catkin CMake config present? $(test -f /opt/ros/${ROS_DISTRO}/share/catkin/cmake/catkinConfig.cmake && echo yes || echo no)"
+echo_stamp "DEBUG: ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH"
 chown -R orangepi:orangepi /home/orangepi/catkin_ws/
 chmod -R 755 /home/orangepi/catkin_ws/
 
@@ -127,11 +143,18 @@ CMAKE_PREFIX_ARG="-DCMAKE_PREFIX_PATH=${UNDERLAY}"
 if [ ! -x "${UNDERLAY}/bin/catkin_make" ] || [ ! -f "${UNDERLAY}/share/catkin/cmake/catkinConfig.cmake" ]; then
   safe_install "my_travis_retry apt-get update -y" "apt update"
   safe_install "my_travis_retry apt-get install -y ros-${ROS_DISTRO}-catkin" "Install ros-${ROS_DISTRO}-catkin"
+  # Fallback: ensure base ROS meta-package present if catkin CMake config is still missing
+  if [ ! -f "${UNDERLAY}/share/catkin/cmake/catkinConfig.cmake" ]; then
+    safe_install "my_travis_retry apt-get install -y ros-${ROS_DISTRO}-ros-base" "Install ros-${ROS_DISTRO}-ros-base"
+  fi
 fi
-
-# Persist blacklist in catkin config
-# catkin config --blacklist aruco_pose roswww_static
-
+# Re-source ROS environment to pick up just-installed catkin
+source /opt/ros/${ROS_DISTRO}/setup.bash
+# Debug: verify catkin again
+echo_stamp "DEBUG: After ensuring catkin"
+echo_stamp "DEBUG: which catkin_make: $(command -v catkin_make || echo 'not found')"
+echo_stamp "DEBUG: catkin CMake config present? $(test -f /opt/ros/${ROS_DISTRO}/share/catkin/cmake/catkinConfig.cmake && echo yes || echo no)"
+echo_stamp "DEBUG: ls /opt/ros/${ROS_DISTRO}/share/catkin/cmake: $(ls -1 /opt/ros/${ROS_DISTRO}/share/catkin/cmake 2>/dev/null | tr '\n' ' ')"
 # (catkin_tools blacklist removed; using catkin_make CMake args instead)
 
 # Build with catkin_make
@@ -159,6 +182,8 @@ ulimit -s unlimited 2>/dev/null || true  # Unlimited stack size
 echo_stamp "Attempting build with catkin_make"
 # Temporarily disable exit on error for build process
 set +e
+# Debug: first configure command to be executed
+echo_stamp "DEBUG: Running catkin_make with args: -j1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' -DCATKIN_ENABLE_TESTING=OFF -DBUILD_TESTING=OFF -DPYTHON_EXECUTABLE=/usr/bin/python3 ${CMAKE_PREFIX_ARG} -DCATKIN_BLACKLIST_PACKAGES='aruco_pose;roswww_static' -DCATKIN_WHITELIST_PACKAGES=''"
 if ! safe_install "catkin_make -j1 \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CXX_FLAGS='-O1 -g0' \
@@ -170,6 +195,7 @@ if ! safe_install "catkin_make -j1 \
   -DCATKIN_WHITELIST_PACKAGES=''" "Build ROS packages with catkin_make"; then
     echo_stamp "catkin_make failed, trying selective builds" "ERROR"
     # Try building only coptra_blocks (some platforms need this separately)
+    echo_stamp "DEBUG: Running selective build for coptra_blocks"
     safe_install "catkin_make -j1 \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_CXX_FLAGS='-O1 -g0' \
@@ -180,6 +206,7 @@ if ! safe_install "catkin_make -j1 \
       -DCATKIN_WHITELIST_PACKAGES='coptra_blocks'" "Build coptra_blocks only" || echo_stamp "coptra_blocks build failed, continuing" "ERROR"
 
     # Try building only coptra
+    echo_stamp "DEBUG: Running selective build for coptra"
     safe_install "catkin_make -j1 \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_CXX_FLAGS='-O1 -g0' \
@@ -215,8 +242,8 @@ chown -Rf orangepi:orangepi /home/orangepi/catkin_ws
 chown -Rf orangepi:orangepi /opt/ros/noetic/lib/ 2>/dev/null || true
 cd /home/orangepi/catkin_ws
 echo_stamp "Update www"
-# Update www with roswww_static
-safe_install "sudo -u orangepi bash -c 'source /opt/ros/noetic/setup.bash && rosrun roswww_static update'" "Update www"
+# Update www with roswww_static only if available
+safe_install "bash -lc 'source /opt/ros/noetic/setup.bash && rospack find roswww_static >/dev/null 2>&1 && sudo -u orangepi rosrun roswww_static update'" "Update www if roswww_static is installed"
 
 
 echo_stamp "Setup nginx web files"
@@ -373,6 +400,10 @@ echo_stamp "Reload bashrc to apply environment variables"
 # Reload bashrc for current session
 source /home/orangepi/.bashrc
 source /root/.bashrc
+# Debug: final env confirmation
+echo_stamp "DEBUG: Final which catkin_make: $(command -v catkin_make || echo 'not found')"
+echo_stamp "DEBUG: Final ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH"
+echo_stamp "DEBUG: Final CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
 
 apt-get clean -qq > /dev/null
 
