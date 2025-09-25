@@ -215,6 +215,9 @@ python3-opencv \
 python3-dateutil \
 python3-docutils \
 python3-yaml \
+ros-noetic-catkin \
+python3-pytest \
+python3-pytest-cov \
 catkin-tools \
 libgeographic19 \
 libgeographic-dev \
@@ -397,6 +400,7 @@ ros-noetic-sensor-msgs \
 ros-noetic-genmsg \
 ros-noetic-led-msgs \
 ros-noetic-image-transport \
+ros-noetic-ros-pytest \
 ros-noetic-tf \
 ros-noetic-cv-bridge \
 ros-noetic-geographic-msgs \
