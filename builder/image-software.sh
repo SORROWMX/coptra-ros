@@ -215,6 +215,7 @@ python3-opencv \
 python3-dateutil \
 python3-docutils \
 python3-yaml \
+rospack-tools \
 ros-noetic-catkin \
 python3-pytest \
 python3-pytest-cov \

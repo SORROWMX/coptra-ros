@@ -350,14 +350,24 @@ safe_install 'bash -lc "
     source /opt/ros/noetic/setup.bash
   fi
   echo \"DEBUG[www]: Using ROS_PACKAGE_PATH=\$ROS_PACKAGE_PATH\"
+  # Prefer roslaunch if a launch file exists
   if rospack find roswww_static >/dev/null 2>&1; then
-    echo \"DEBUG[www]: roswww_static found at \$(rospack find roswww_static)\"
-    sudo -u orangepi rosrun roswww_static update || { echo \"WARN[www]: roswww_static update failed\"; exit 1; }
+    PKG_PATH=\$(rospack find roswww_static)
+    if [ -f \"$PKG_PATH/launch/update.launch\" ]; then
+      echo \"DEBUG[www]: Found roswww_static update.launch, running roslaunch\"
+      sudo -u orangepi bash -lc \"source /home/orangepi/catkin_ws/devel/setup.bash 2>/dev/null || source /opt/ros/noetic/setup.bash; roslaunch roswww_static update.launch --wait\"
+    else
+      echo \"DEBUG[www]: update.launch not found, trying rosrun roswww_static update\"
+      sudo -u orangepi bash -lc \"source /home/orangepi/catkin_ws/devel/setup.bash 2>/dev/null || source /opt/ros/noetic/setup.bash; rosrun roswww_static update\"
+    fi
+  elif rospack find coptra >/dev/null 2>&1; then
+    echo \"DEBUG[www]: roswww_static not found, trying rosrun coptra www\"
+    sudo -u orangepi bash -lc \"source /home/orangepi/catkin_ws/devel/setup.bash 2>/dev/null || source /opt/ros/noetic/setup.bash; rosrun coptra www\"
   else
-    echo \"INFO[www]: roswww_static not found, will skip rosrun and try manual fallback\"
+    echo \"INFO[www]: Neither roswww_static nor coptra www is available\"
     exit 2
   fi
-"' "Update www if roswww_static is installed" || {
+"' "Update www via roslaunch/rosrun" || {
   # Fallback: populate ~/.ros/www from package www folders
   echo_stamp "Fallback: populate /home/orangepi/.ros/www from package www folders"
   mkdir -p /home/orangepi/.ros/www/coptra /home/orangepi/.ros/www/coptra_blocks
@@ -525,6 +535,25 @@ echo_stamp "Reload bashrc to apply environment variables"
 # Reload bashrc for current session
 source /home/orangepi/.bashrc
 source /root/.bashrc
+# Ensure Python can import devel-space packages even in non-sourced shells
+echo_stamp "Create Python site-path .pth for devel dist-packages"
+PTH_DIR="/usr/local/lib/python3/dist-packages"
+mkdir -p "$PTH_DIR"
+cat > "$PTH_DIR/coptra_devel.pth" << 'EOF'
+/home/orangepi/catkin_ws/devel/lib/python3/dist-packages
+/opt/ros/noetic/lib/python3/dist-packages
+EOF
+chmod 644 "$PTH_DIR/coptra_devel.pth"
+echo_stamp "Created $PTH_DIR/coptra_devel.pth"
+
+# Symlink key ROS CLI tools into /usr/local/bin so they are available without sourcing
+for bin in rosrun roslaunch rospack roscd roscore; do
+  if [ -x "/opt/ros/noetic/bin/$bin" ] && [ ! -e "/usr/local/bin/$bin" ]; then
+    ln -s "/opt/ros/noetic/bin/$bin" "/usr/local/bin/$bin" || true
+    echo_stamp "Linked $bin to /usr/local/bin"
+  fi
+done
+
 # Debug: final env confirmation
 echo_stamp "DEBUG: Final which catkin_make: $(command -v catkin_make || echo 'not found')"
 echo_stamp "DEBUG: Final ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH"
