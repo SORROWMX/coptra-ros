@@ -194,7 +194,7 @@ echo_stamp "Attempting build with catkin_make"
 # Temporarily disable exit on error for build process
 set +e
 # Debug: first configure command to be executed
-echo_stamp "DEBUG: Running catkin_make with args: -j1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' -DCATKIN_ENABLE_TESTING=OFF -DBUILD_TESTING=OFF -DPYTHON_EXECUTABLE=/usr/bin/python3 ${CMAKE_PREFIX_ARG} -Dcatkin_DIR=/opt/ros/${ROS_DISTRO}/share/catkin/cmake -DCATKIN_BLACKLIST_PACKAGES='aruco_pose;roswww_static' -DCATKIN_WHITELIST_PACKAGES=''"
+echo_stamp "DEBUG: Running catkin_make with args: -j1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' -DCATKIN_ENABLE_TESTING=OFF -DBUILD_TESTING=OFF -DPYTHON_EXECUTABLE=/usr/bin/python3 ${CMAKE_PREFIX_ARG} -Dcatkin_DIR=/opt/ros/${ROS_DISTRO}/share/catkin/cmake -Dstd_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/std_msgs/cmake -Dgeometry_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/geometry_msgs/cmake -DCATKIN_BLACKLIST_PACKAGES='aruco_pose;roswww_static' -DCATKIN_WHITELIST_PACKAGES=''"
 if ! safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH='${ROS_PACKAGE_PATH}' catkin_make -j1 \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CXX_FLAGS='-O1 -g0' \
@@ -203,6 +203,8 @@ if ! safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH
   -DPYTHON_EXECUTABLE=/usr/bin/python3 \
   ${CMAKE_PREFIX_ARG} \
   -Dcatkin_DIR=/opt/ros/${ROS_DISTRO}/share/catkin/cmake \
+  -Dstd_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/std_msgs/cmake \
+  -Dgeometry_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/geometry_msgs/cmake \
   -DCATKIN_BLACKLIST_PACKAGES='aruco_pose;roswww_static' \
   -DCATKIN_WHITELIST_PACKAGES=''" "Build ROS packages with catkin_make"; then
     echo_stamp "catkin_make failed, trying selective builds" "ERROR"
@@ -215,6 +217,8 @@ if ! safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH
       -DBUILD_TESTING=OFF \
       -DPYTHON_EXECUTABLE=/usr/bin/python3 \
       ${CMAKE_PREFIX_ARG} \
+      -Dstd_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/std_msgs/cmake \
+      -Dgeometry_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/geometry_msgs/cmake \
       -Dcatkin_DIR=/opt/ros/${ROS_DISTRO}/share/catkin/cmake \
       -DCATKIN_WHITELIST_PACKAGES='coptra_blocks'" "Build coptra_blocks only" || echo_stamp "coptra_blocks build failed, continuing" "ERROR"
 
@@ -227,6 +231,8 @@ if ! safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH
       -DBUILD_TESTING=OFF \
       -DPYTHON_EXECUTABLE=/usr/bin/python3 \
       ${CMAKE_PREFIX_ARG} \
+      -Dstd_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/std_msgs/cmake \
+      -Dgeometry_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/geometry_msgs/cmake \
       -Dcatkin_DIR=/opt/ros/${ROS_DISTRO}/share/catkin/cmake \
       -DCATKIN_WHITELIST_PACKAGES='coptra'" "Build coptra only" || echo_stamp "coptra build failed, continuing" "ERROR"
 fi
