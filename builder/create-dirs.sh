@@ -7,8 +7,6 @@ set -e
 
 echo "Creating target directory structure..."
 
-# Create catkin workspace directories
-mkdir -p /home/orangepi/catkin_ws/src/coptra
 
 # Set proper ownership
 chown -R orangepi:orangepi /home/orangepi/catkin_ws 2>/dev/null || true
