@@ -417,22 +417,22 @@ server {
     location /coptra/ {
         alias /var/www/ros/coptra/;
         index index.html;
-        try_files $uri $uri/ =404;
+        try_files \$uri \$uri/ =404;
     }
     
     # Static files from coptra_blocks/www
     location /coptra_blocks/ {
         alias /var/www/ros/coptra_blocks/;
         index index.html;
-        try_files $uri $uri/ =404;
+        try_files \$uri \$uri/ =404;
     }
     
     # For static files (CSS, JS, images)
-    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg)$ {
+    location ~* \\.(css|js|png|jpg|jpeg|gif|ico|svg)\$ {
         root /var/www/ros;
         expires 1y;
-        add_header Cache-Control "public, immutable";
-        add_header Access-Control-Allow-Origin "*";
+        add_header Cache-Control \"public, immutable\";
+        add_header Access-Control-Allow-Origin \"*\";
     }
 
     # Add favicon
@@ -447,7 +447,7 @@ server {
         gzip off;
         fastcgi_pass unix:/var/run/fcgiwrap.socket;
         include /etc/nginx/fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME /usr/lib/cgi-bin$fastcgi_script_name;
+        fastcgi_param SCRIPT_FILENAME /usr/lib/cgi-bin\$fastcgi_script_name;
     }
 }
 EOF" "Create nginx ROS configuration"
