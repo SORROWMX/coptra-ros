@@ -353,23 +353,38 @@ safe_install 'sudo -u orangepi bash -lc "
   fi
   
   echo \"DEBUG[www]: Using ROS_PACKAGE_PATH=\$ROS_PACKAGE_PATH\"
+  echo \"DEBUG[www]: Available packages:\"
+  rospack list | grep -E \"(coptra|coptra_blocks)\" || echo \"No coptra packages found\"
+  
+  # Set default package for roswww_static
+  export ROSWWW_DEFAULT=coptra
+  
   echo \"DEBUG[www]: Running rosrun roswww_static update from orangepi user\"
   
   # Run roswww_static update
   rosrun roswww_static update
   
   echo \"DEBUG[www]: roswww_static update completed\"
+  echo \"DEBUG[www]: Created files:\"
+  ls -la /home/orangepi/.ros/www/ || echo \"No www directory created\"
 "' "Update www via roswww_static" || {
-  # Fallback: populate ~/.ros/www from package www folders
-  echo_stamp "Fallback: populate /home/orangepi/.ros/www from package www folders"
-  mkdir -p /home/orangepi/.ros/www/coptra /home/orangepi/.ros/www/coptra_blocks
+  # Fallback: manually create www structure
+  echo_stamp "Fallback: manually create www structure"
+  safe_install "mkdir -p /home/orangepi/.ros/www" "Create www directory"
+  
+  # Create symlinks manually if packages are available
   if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra/www" ]; then
-    rsync -a --delete /home/orangepi/catkin_ws/src/coptra-ros/coptra/www/ /home/orangepi/.ros/www/coptra/
+    safe_install "ln -sf /home/orangepi/catkin_ws/src/coptra-ros/coptra/www /home/orangepi/.ros/www/coptra" "Create coptra symlink"
   fi
   if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www" ]; then
-    rsync -a --delete /home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www/ /home/orangepi/.ros/www/coptra_blocks/
+    safe_install "ln -sf /home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www /home/orangepi/.ros/www/coptra_blocks" "Create coptra_blocks symlink"
   fi
+  
+  # Create index.html with redirect to coptra
+  safe_install "echo \"<meta http-equiv=refresh content=\\\"0; url=coptra/\\\">\" > /home/orangepi/.ros/www/index.html" "Create index.html redirect"
+  
   chown -R orangepi:orangepi /home/orangepi/.ros/www || true
+  echo_stamp "Manual www structure created"
 }
 
 
@@ -380,34 +395,35 @@ if ! command -v nginx >/dev/null 2>&1; then
 else
 
 # Copy files from roswww_static to nginx directory
-if [ -d /home/orangepi/.ros/www ]; then
     # Create nginx directory
     safe_install "mkdir -p /var/www/ros" "Create nginx directory"
     
     # Remove existing files to avoid conflicts
     rm -rf /var/www/ros/*
     
-    # Check if roswww_static created the files, if not use fallback
-    if [ -d "/home/orangepi/.ros/www/coptra" ]; then
-        # Copy real files (not symlinks) using -L flag to follow symlinks
-        safe_install "cp -rL /home/orangepi/.ros/www/coptra /var/www/ros/" "Copy coptra web files (real files)"
-        safe_install "cp -rL /home/orangepi/.ros/www/coptra_blocks /var/www/ros/" "Copy coptra_blocks web files (real files)"
-        echo_stamp "Web files copied from roswww_static to /var/www/ros/"
-    else
-        # Fallback: copy directly from source packages
-        echo_stamp "roswww_static files not found, using fallback copy from source packages"
-        if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra/www" ]; then
-            safe_install "cp -rL /home/orangepi/catkin_ws/src/coptra-ros/coptra/www /var/www/ros/coptra" "Copy coptra web files from source (fallback)"
-        fi
-        if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www" ]; then
-            safe_install "cp -rL /home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www /var/www/ros/coptra_blocks" "Copy coptra_blocks web files from source (fallback)"
-        fi
+if [ -d /home/orangepi/.ros/www ]; then
+    # Copy all files from ~/.ros/www to nginx directory
+    # Use -L flag to follow symlinks and copy real files
+    safe_install "cp -rL /home/orangepi/.ros/www/* /var/www/ros/" "Copy all web files from roswww_static"
+    echo_stamp "Web files copied from roswww_static to /var/www/ros/"
+else
+    # Fallback: copy directly from source packages
+    echo_stamp "Warning: /home/orangepi/.ros/www not found, using fallback copy from source packages"
+    if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra/www" ]; then
+        safe_install "cp -rL /home/orangepi/catkin_ws/src/coptra-ros/coptra/www /var/www/ros/coptra" "Copy coptra web files from source (fallback)"
     fi
-    
-    # Set proper permissions
+    if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www" ]; then
+        safe_install "cp -rL /home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www /var/www/ros/coptra_blocks" "Copy coptra_blocks web files from source (fallback)"
+    fi
+    # Create index.html with redirect to coptra
+    safe_install "echo \"<meta http-equiv=refresh content=\\\"0; url=coptra/\\\">\" > /var/www/ros/index.html" "Create index.html redirect (fallback)"
+    echo_stamp "Web files copied from source packages to /var/www/ros/ (fallback)"
+fi
+
+# Set proper permissions (common for both cases)
     chown -R www-data:www-data /var/www/ros/
     chmod -R 755 /var/www/ros/
-    echo_stamp "Web files copied successfully to /var/www/ros/ (real files, not symlinks)"
+echo_stamp "Web files copied successfully to /var/www/ros/ (real files, not symlinks)"
     
     # Create nginx configuration for ROS
     echo_stamp "Creating nginx configuration"
@@ -496,23 +512,6 @@ EOF" "Create nginx ROS configuration"
     safe_install "systemctl enable nginx" "Enable nginx"
     
     echo_stamp "Nginx configured successfully for ROS"
-else
-    echo_stamp "Warning: /home/orangepi/.ros/www not found, using fallback copy from source packages"
-    # Create nginx directory
-    safe_install "mkdir -p /var/www/ros" "Create nginx directory"
-    
-    # Copy directly from source packages as fallback
-    if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra/www" ]; then
-        safe_install "cp -rL /home/orangepi/catkin_ws/src/coptra-ros/coptra/www /var/www/ros/coptra" "Copy coptra web files from source (fallback)"
-    fi
-    if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www" ]; then
-        safe_install "cp -rL /home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www /var/www/ros/coptra_blocks" "Copy coptra_blocks web files from source (fallback)"
-    fi
-    
-    # Set proper permissions
-    safe_install "chown -R www-data:www-data /var/www/ros" "Set web directory ownership"
-    safe_install "chmod -R 755 /var/www/ros" "Set web directory permissions"
-    echo_stamp "Web files copied from source packages to /var/www/ros/ (fallback)"
 fi
 fi
 
