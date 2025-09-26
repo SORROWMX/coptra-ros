@@ -198,7 +198,7 @@ if [ ! -x "${UNDERLAY}/bin/catkin_make" ] || [ ! -f "${UNDERLAY}/share/catkin/cm
   fi
 fi
 # Re-source ROS environment to pick up just-installed catkin
-source /opt/ros/${ROS_DISTRO}/setup.bash
+sudo -u orangepi bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash"
 # Debug: verify catkin again
 echo_stamp "DEBUG: After ensuring catkin"
 echo_stamp "DEBUG: which catkin_make: $(command -v catkin_make || echo 'not found')"
@@ -341,33 +341,23 @@ chown -Rf orangepi:orangepi /home/orangepi/catkin_ws
 chown -Rf orangepi:orangepi /opt/ros/noetic/lib/ 2>/dev/null || true
 cd /home/orangepi/catkin_ws
 echo_stamp "Update www"
-# Update www with roswww_static only if available (prefer workspace devel env), with debug and fallback copy
-safe_install 'bash -lc "
+# Update www with roswww_static from orangepi user
+safe_install 'sudo -u orangepi bash -lc "
   set -e
+  # Source ROS environment
+  source /opt/ros/noetic/setup.bash
   if [ -f /home/orangepi/catkin_ws/devel/setup.bash ]; then
     source /home/orangepi/catkin_ws/devel/setup.bash
-  else
-    source /opt/ros/noetic/setup.bash
   fi
+  
   echo \"DEBUG[www]: Using ROS_PACKAGE_PATH=\$ROS_PACKAGE_PATH\"
-  # Prefer roslaunch if a launch file exists
-  if rospack find roswww_static >/dev/null 2>&1; then
-    PKG_PATH=\$(rospack find roswww_static)
-    if [ -f \"$PKG_PATH/launch/update.launch\" ]; then
-      echo \"DEBUG[www]: Found roswww_static update.launch, running roslaunch\"
-      sudo -u orangepi bash -lc \"source /home/orangepi/catkin_ws/devel/setup.bash 2>/dev/null || source /opt/ros/noetic/setup.bash; roslaunch roswww_static update.launch --wait\"
-    else
-      echo \"DEBUG[www]: update.launch not found, trying rosrun roswww_static update\"
-      sudo -u orangepi bash -lc \"source /home/orangepi/catkin_ws/devel/setup.bash 2>/dev/null || source /opt/ros/noetic/setup.bash; rosrun roswww_static update\"
-    fi
-  elif rospack find coptra >/dev/null 2>&1; then
-    echo \"DEBUG[www]: roswww_static not found, trying rosrun coptra www\"
-    sudo -u orangepi bash -lc \"source /home/orangepi/catkin_ws/devel/setup.bash 2>/dev/null || source /opt/ros/noetic/setup.bash; rosrun coptra www\"
-  else
-    echo \"INFO[www]: Neither roswww_static nor coptra www is available\"
-    exit 2
-  fi
-"' "Update www via roslaunch/rosrun" || {
+  echo \"DEBUG[www]: Running rosrun roswww_static update from orangepi user\"
+  
+  # Run roswww_static update
+  rosrun roswww_static update
+  
+  echo \"DEBUG[www]: roswww_static update completed\"
+"' "Update www via roswww_static" || {
   # Fallback: populate ~/.ros/www from package www folders
   echo_stamp "Fallback: populate /home/orangepi/.ros/www from package www folders"
   mkdir -p /home/orangepi/.ros/www/coptra /home/orangepi/.ros/www/coptra_blocks
@@ -382,6 +372,11 @@ safe_install 'bash -lc "
 
 
 echo_stamp "Setup nginx web files"
+# Ensure nginx and fcgiwrap are available
+if ! command -v nginx >/dev/null 2>&1; then
+    echo_stamp "Warning: nginx not installed, skipping web setup" "ERROR"
+else
+
 # Copy files from roswww_static to nginx directory
 if [ -d /home/orangepi/.ros/www ]; then
     # Create nginx directory
@@ -401,32 +396,58 @@ if [ -d /home/orangepi/.ros/www ]; then
     safe_install "tee /etc/nginx/sites-available/ros > /dev/null << 'EOF'
 server {
     listen 80;
-    server_name localhost;
+    server_name _;
     
-    # Главная страница - перенаправляем на coptra
+    # Main page - redirect to coptra
     location = / {
         return 301 /coptra/;
     }
     
-    # Статические файлы из coptra/www
+    # Redirect /coptra to /coptra/ (with trailing slash)
+    location = /coptra {
+        return 301 /coptra/;
+    }
+
+    # Redirect /coptra_blocks to /coptra_blocks/ (with trailing slash)  
+    location = /coptra_blocks {
+        return 301 /coptra_blocks/;
+    }
+    
+    # Static files from coptra/www
     location /coptra/ {
         alias /var/www/ros/coptra/;
         index index.html;
-        try_files \$uri \$uri/ =404;
+        try_files $uri $uri/ =404;
     }
     
-    # Статические файлы из coptra_blocks/www
+    # Static files from coptra_blocks/www
     location /coptra_blocks/ {
         alias /var/www/ros/coptra_blocks/;
         index index.html;
-        try_files \$uri \$uri/ =404;
+        try_files $uri $uri/ =404;
     }
     
-    # Для статических файлов (CSS, JS, изображения)
-    location ~* \\.(css|js|png|jpg|jpeg|gif|ico|svg)\$ {
+    # For static files (CSS, JS, images)
+    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg)$ {
         root /var/www/ros;
         expires 1y;
-        add_header Cache-Control \"public, immutable\";
+        add_header Cache-Control "public, immutable";
+        add_header Access-Control-Allow-Origin "*";
+    }
+
+    # Add favicon
+    location = /favicon.ico {
+        alias /var/www/ros/coptra/coptra_icon_128.png;
+        expires 1y;
+    }
+    
+    # CGI scripts for network management
+    location /cgi-bin/ {
+        alias /usr/lib/cgi-bin/;
+        gzip off;
+        fastcgi_pass unix:/var/run/fcgiwrap.socket;
+        include /etc/nginx/fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME /usr/lib/cgi-bin$fastcgi_script_name;
     }
 }
 EOF" "Create nginx ROS configuration"
@@ -445,6 +466,10 @@ EOF" "Create nginx ROS configuration"
         echo_stamp "Default nginx site already removed"
     fi
     
+    # Enable and start fcgiwrap for CGI support
+    safe_install "systemctl enable fcgiwrap" "Enable fcgiwrap"
+    safe_install "systemctl start fcgiwrap" "Start fcgiwrap"
+    
     # Test nginx configuration
     safe_install "nginx -t" "Test nginx configuration"
     
@@ -455,6 +480,11 @@ EOF" "Create nginx ROS configuration"
     echo_stamp "Nginx configured successfully for ROS"
 else
     echo_stamp "Warning: /home/orangepi/.ros/www not found, skipping web files copy"
+    # Create empty directories as fallback
+    safe_install "mkdir -p /var/www/ros/coptra /var/www/ros/coptra_blocks" "Create empty web directories"
+    safe_install "chown -R www-data:www-data /var/www/ros" "Set web directory ownership"
+    safe_install "chmod -R 755 /var/www/ros" "Set web directory permissions"
+fi
 fi
 
 echo_stamp "Make \$HOME/examples symlink"
@@ -499,41 +529,40 @@ fi
 # Udev rules removed as requested
 
 echo_stamp "Setup ROS environment"
-cat << EOF >> /home/orangepi/.bashrc
-LANG='C.UTF-8'
-LC_ALL='C.UTF-8'
+cat << 'EOF' >> /home/orangepi/.bashrc
+# ROS Environment Setup
+source /opt/ros/noetic/setup.bash
+source /home/orangepi/catkin_ws/devel/setup.bash
 export ROS_HOSTNAME=localhost
 export ROS_IP=127.0.0.1
 export ROS_ROOT=/opt/ros/noetic
 export ROS_DISTRO=noetic
-export LD_LIBRARY_PATH=/opt/ros/noetic/lib:/home/orangepi/catkin_ws/devel/lib:\$LD_LIBRARY_PATH
-export ROS_PACKAGE_PATH=/opt/ros/noetic/share:/home/orangepi/catkin_ws/devel/share:\$ROS_PACKAGE_PATH
-export PYTHONPATH=/home/orangepi/catkin_ws/devel/lib/python3/dist-packages:/opt/ros/noetic/lib/python3/dist-packages:\$PYTHONPATH
-export PATH=/opt/ros/noetic/bin:/home/orangepi/catkin_ws/devel/lib:\$PATH
-export CMAKE_PREFIX_PATH=/opt/ros/noetic:/home/orangepi/catkin_ws/devel:\$CMAKE_PREFIX_PATH
-source /opt/ros/\${ROS_DISTRO}/setup.bash
-source /home/orangepi/catkin_ws/devel/setup.bash
+export LD_LIBRARY_PATH=/opt/ros/noetic/lib:/home/orangepi/catkin_ws/devel/lib:$LD_LIBRARY_PATH
+export ROS_PACKAGE_PATH=/home/orangepi/catkin_ws/src:/opt/ros/noetic/share:/home/orangepi/catkin_ws/devel/share:$ROS_PACKAGE_PATH
+export PYTHONPATH=/opt/ros/noetic/lib/python3/dist-packages:/home/orangepi/catkin_ws/devel/lib/python3/dist-packages:$PYTHONPATH
+export PATH=/opt/ros/noetic/bin:/home/orangepi/catkin_ws/devel/lib:$PATH
+export CMAKE_PREFIX_PATH=/opt/ros/noetic:/home/orangepi/catkin_ws/devel:$CMAKE_PREFIX_PATH
 EOF
 
 # Also set up for root user
-cat << EOF >> /root/.bashrc
-# Comprehensive ROS environment setup
+cat << 'EOF' >> /root/.bashrc
+# ROS Environment Setup
+source /opt/ros/noetic/setup.bash
+source /home/orangepi/catkin_ws/devel/setup.bash
 export ROS_HOSTNAME=localhost
 export ROS_IP=127.0.0.1
 export ROS_ROOT=/opt/ros/noetic
 export ROS_DISTRO=noetic
-export LD_LIBRARY_PATH=/opt/ros/noetic/lib:/home/orangepi/catkin_ws/devel/lib:\$LD_LIBRARY_PATH
-export ROS_PACKAGE_PATH=/opt/ros/noetic/share:/home/orangepi/catkin_ws/devel/share:\$ROS_PACKAGE_PATH
-export PYTHONPATH=/home/orangepi/catkin_ws/devel/lib/python3/dist-packages:/opt/ros/noetic/lib/python3/dist-packages:\$PYTHONPATH
-export PATH=/opt/ros/noetic/bin:/home/orangepi/catkin_ws/devel/lib:\$PATH
-export CMAKE_PREFIX_PATH=/opt/ros/noetic:/home/orangepi/catkin_ws/devel:\$CMAKE_PREFIX_PATH
-source /opt/ros/noetic/setup.bash
-source /home/orangepi/catkin_ws/devel/setup.bash
+export LD_LIBRARY_PATH=/opt/ros/noetic/lib:/home/orangepi/catkin_ws/devel/lib:$LD_LIBRARY_PATH
+export ROS_PACKAGE_PATH=/home/orangepi/catkin_ws/src:/opt/ros/noetic/share:/home/orangepi/catkin_ws/devel/share:$ROS_PACKAGE_PATH
+export PYTHONPATH=/opt/ros/noetic/lib/python3/dist-packages:/home/orangepi/catkin_ws/devel/lib/python3/dist-packages:$PYTHONPATH
+export PATH=/opt/ros/noetic/bin:/home/orangepi/catkin_ws/devel/lib:$PATH
+export CMAKE_PREFIX_PATH=/opt/ros/noetic:/home/orangepi/catkin_ws/devel:$CMAKE_PREFIX_PATH
 EOF
 
 echo_stamp "Reload bashrc to apply environment variables"
-# Reload bashrc for current session
-source /home/orangepi/.bashrc
+# Reload bashrc for current session from orangepi user
+sudo -u orangepi bash -c "source /home/orangepi/.bashrc"
 source /root/.bashrc
 # Ensure Python can import devel-space packages even in non-sourced shells
 echo_stamp "Create Python site-path .pth for devel dist-packages"
@@ -553,6 +582,81 @@ for bin in rosrun roslaunch rospack roscd roscore; do
     echo_stamp "Linked $bin to /usr/local/bin"
   fi
 done
+
+echo_stamp "Create persistent ROS symlinks script and service"
+# Create comprehensive symlinks script that runs on boot
+safe_install "tee /usr/local/bin/create-ros-symlinks.sh > /dev/null << 'SYMLINK_EOF'
+#!/bin/bash
+echo \"Creating comprehensive ROS symlinks...\"
+
+# mavros
+mkdir -p /opt/ros/noetic/share/mavros/
+ln -sf /opt/ros/noetic/lib/mavros/mavros_node /opt/ros/noetic/share/mavros/mavros_node
+
+# mavros_extras
+mkdir -p /opt/ros/noetic/share/mavros_extras/
+ln -sf /opt/ros/noetic/lib/mavros_extras/visualization /opt/ros/noetic/share/mavros_extras/visualization
+
+# web_video_server
+mkdir -p /opt/ros/noetic/share/web_video_server/
+ln -sf /opt/ros/noetic/lib/web_video_server/web_video_server /opt/ros/noetic/share/web_video_server/web_video_server
+
+# nodelet
+mkdir -p /opt/ros/noetic/share/nodelet/
+ln -sf /opt/ros/noetic/lib/nodelet/nodelet /opt/ros/noetic/share/nodelet/nodelet
+
+# tf2_ros
+mkdir -p /opt/ros/noetic/share/tf2_ros/
+ln -sf /opt/ros/noetic/lib/tf2_ros/static_transform_publisher /opt/ros/noetic/share/tf2_ros/static_transform_publisher
+
+# rosbridge_server (including rosbridge_websocket)
+mkdir -p /opt/ros/noetic/share/rosbridge_server/
+find /opt/ros/noetic/lib/rosbridge_server -type f -executable 2>/dev/null | while read file; do
+    filename=\$(basename \"\$file\")
+    ln -sf \"\$file\" \"/opt/ros/noetic/share/rosbridge_server/\$filename\"
+done
+
+# rosapi
+mkdir -p /opt/ros/noetic/share/rosapi/
+find /opt/ros/noetic/lib/rosapi -type f -executable 2>/dev/null | while read file; do
+    filename=\$(basename \"\$file\")
+    ln -sf \"\$file\" \"/opt/ros/noetic/share/rosapi/\$filename\"
+done
+
+# tf2_web_republisher
+mkdir -p /opt/ros/noetic/share/tf2_web_republisher/
+find /opt/ros/noetic/lib/tf2_web_republisher -type f -executable 2>/dev/null | while read file; do
+    filename=\$(basename \"\$file\")
+    ln -sf \"\$file\" \"/opt/ros/noetic/share/tf2_web_republisher/\$filename\"
+done
+
+echo \"ROS symlinks created successfully\"
+SYMLINK_EOF" "Create ROS symlinks script"
+
+# Make the script executable
+safe_install "chmod +x /usr/local/bin/create-ros-symlinks.sh" "Make symlinks script executable"
+
+# Create systemd service for symlinks
+safe_install "tee /etc/systemd/system/ros-symlinks.service > /dev/null << 'SERVICE_EOF'
+[Unit]
+Description=Create ROS symlinks for rosrun compatibility
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/create-ros-symlinks.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+SERVICE_EOF" "Create ROS symlinks systemd service"
+
+# Enable and start the symlinks service
+safe_install "systemctl daemon-reload" "Reload systemd daemon"
+safe_install "systemctl enable ros-symlinks.service" "Enable ROS symlinks service"
+safe_install "systemctl start ros-symlinks.service" "Start ROS symlinks service"
+
+echo_stamp "ROS symlinks script and service created and enabled"
 
 # Debug: final env confirmation
 echo_stamp "DEBUG: Final which catkin_make: $(command -v catkin_make || echo 'not found')"

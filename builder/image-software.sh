@@ -408,8 +408,10 @@ ros-noetic-geographic-msgs \
 ros-noetic-eigen-conversions \
 ros-noetic-tf2-geometry-msgs \
 ros-noetic-mavros \
+ros-noetic-aruco-pose \
 libroscpp-core-dev \
 ros-noetic-rosbridge-server \
+ros-noetic-roswww-static \
 ros-noetic-mavros-extras \
 ros-noetic-web-video-server \
 ros-noetic-tf2-web-republisher \
@@ -637,64 +639,6 @@ EOF
 systemctl daemon-reload
 systemctl enable cam-320x240.service
 
-echo_stamp "Setup nginx for web interface"
-# Create nginx configuration for ROS
-tee /etc/nginx/sites-available/ros > /dev/null << 'EOF'
-server {
-    listen 80;
-    server_name localhost;
-    
-    # Main page - redirect to coptra
-    location = / {
-        return 301 /coptra/;
-    }
-    
-    # Static files from coptra/www
-    location /coptra/ {
-        alias /var/www/ros/coptra/;
-        index index.html;
-        try_files $uri $uri/ =404;
-    }
-    
-    # Static files from coptra_blocks/www
-    location /coptra_blocks/ {
-        alias /var/www/ros/coptra_blocks/;
-        index index.html;
-        try_files $uri $uri/ =404;
-    }
-    
-    # For static files (CSS, JS, images)
-    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg)$ {
-        root /var/www/ros;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-    
-    # CGI scripts for network management
-    location /cgi-bin/ {
-        alias /usr/lib/cgi-bin/;
-        gzip off;
-        fastcgi_pass unix:/var/run/fcgiwrap.socket;
-        include /etc/nginx/fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME /usr/lib/cgi-bin$fastcgi_script_name;
-    }
-}
-EOF
-
-# Create symbolic link and remove default
-ln -s /etc/nginx/sites-available/ros /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
-
-# Create directory for ROS web files
-mkdir -p /var/www/ros
-if [ -d /home/orangepi/.ros/www ]; then
-    cp -r /home/orangepi/.ros/www/* /var/www/ros/
-else
-    echo_stamp "Warning: /home/orangepi/.ros/www not found, creating empty directory"
-    mkdir -p /var/www/ros/coptra
-fi
-chown -R www-data:www-data /var/www/ros
-chmod -R 755 /var/www/ros
 
 # Setup CGI for network management
 echo_stamp "Setup CGI scripts for network management"
