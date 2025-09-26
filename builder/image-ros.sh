@@ -246,10 +246,10 @@ export CMAKE_BUILD_PARALLEL_LEVEL=1  # Limit parallel compilation
 # Add environment variables to help with message generation on ARM
 # Note: ROS_LANG_DISABLE=eus is not valid in ROS Noetic, use CATKIN_ENABLE_TESTING=OFF instead
 export CATKIN_WHITELIST_PACKAGES=""  # Clear whitelist
-export CATKIN_BLACKLIST_PACKAGES="aruco_pose;roswww_static"  # Blacklist heavy/non-critical packages
-# Add compiler optimizations for ARM to reduce memory usage
-export CXXFLAGS="-O1 -g0 -fno-omit-frame-pointer -fno-stack-protector"
-export CFLAGS="-O1 -g0 -fno-omit-frame-pointer -fno-stack-protector"
+export CATKIN_BLACKLIST_PACKAGES="aruco_pose;roswww_static;"  # Blacklist heavy/non-critical packages
+# Add compiler optimizations for ARM to reduce memory usage and prevent segfaults
+export CXXFLAGS="-O0 -fno-stack-protector -fno-strict-aliasing"
+export CFLAGS="-O0 -fno-stack-protector -fno-strict-aliasing"
 # Clear any existing build artifacts that might cause issues
 rm -rf /home/orangepi/catkin_ws/build/coptra_blocks
 rm -rf /home/orangepi/catkin_ws/devel/.private/coptra_blocks
@@ -267,7 +267,7 @@ set +e
 echo_stamp "DEBUG: Running catkin_make with args: -j1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS='-O1 -g0' -DCATKIN_ENABLE_TESTING=OFF -DBUILD_TESTING=OFF -DPYTHON_EXECUTABLE=/usr/bin/python3 ${CMAKE_PREFIX_ARG} -Dcatkin_DIR=/opt/ros/${ROS_DISTRO}/share/catkin/cmake -Dstd_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/std_msgs/cmake -Dgeometry_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/geometry_msgs/cmake -Dsensor_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/sensor_msgs/cmake -Dvisualization_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/visualization_msgs/cmake -Dled_msgs_DIR=/opt/ros/${ROS_DISTRO}/share/led_msgs/cmake -Dmessage_generation_DIR=/opt/ros/${ROS_DISTRO}/share/message_generation/cmake -Dgenmsg_DIR=/opt/ros/${ROS_DISTRO}/share/genmsg/cmake -DCATKIN_BLACKLIST_PACKAGES='aruco_pose;roswww_static' -DCATKIN_WHITELIST_PACKAGES=''"
 if ! safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH='${ROS_PACKAGE_PATH}' catkin_make -j1 \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_FLAGS='-O1 -g0' \
+  -DCMAKE_CXX_FLAGS='-O0 -g0' \
   -DCATKIN_ENABLE_TESTING=OFF \
   -DBUILD_TESTING=OFF \
   -DPYTHON_EXECUTABLE=/usr/bin/python3 \
@@ -288,7 +288,7 @@ if ! safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH
     echo_stamp "DEBUG: Running selective build for coptra_blocks"
     safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH='${ROS_PACKAGE_PATH}' catkin_make -j1 \
       -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_CXX_FLAGS='-O1 -g0' \
+      -DCMAKE_CXX_FLAGS='-O0 -g0' \
       -DCATKIN_ENABLE_TESTING=OFF \
       -DBUILD_TESTING=OFF \
       -DPYTHON_EXECUTABLE=/usr/bin/python3 \
@@ -307,7 +307,7 @@ if ! safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH
     echo_stamp "DEBUG: Running selective build for coptra"
     safe_install "env CMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATH}' ROS_PACKAGE_PATH='${ROS_PACKAGE_PATH}' catkin_make -j1 \
       -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_CXX_FLAGS='-O1 -g0' \
+      -DCMAKE_CXX_FLAGS='-O0 -g0' \
       -DCATKIN_ENABLE_TESTING=OFF \
       -DBUILD_TESTING=OFF \
       -DPYTHON_EXECUTABLE=/usr/bin/python3 \
@@ -387,11 +387,14 @@ if [ -d /home/orangepi/.ros/www ]; then
     # Remove existing files to avoid conflicts
     rm -rf /var/www/ros/*
     
-    # Copy new files
-    cp -r /home/orangepi/.ros/www/* /var/www/ros/
+    # Copy real files (not symlinks) using -L flag to follow symlinks
+    safe_install "cp -rL /home/orangepi/.ros/www/coptra /var/www/ros/" "Copy coptra web files (real files)"
+    safe_install "cp -rL /home/orangepi/.ros/www/coptra_blocks /var/www/ros/" "Copy coptra_blocks web files (real files)"
+    
+    # Set proper permissions
     chown -R www-data:www-data /var/www/ros/
     chmod -R 755 /var/www/ros/
-    echo_stamp "Web files copied successfully to /var/www/ros/"
+    echo_stamp "Web files copied successfully to /var/www/ros/ (real files, not symlinks)"
     
     # Create nginx configuration for ROS
     echo_stamp "Creating nginx configuration"
@@ -668,6 +671,43 @@ safe_install "ln -sf /usr/bin/rosversion /opt/ros/noetic/bin/rosversion" "Link r
 safe_install "ln -sf /home/orangepi/catkin_ws/devel/_setup_util.py /opt/ros/noetic/_setup_util.py" "Link _setup_util.py to ROS directory"
 
 echo_stamp "Essential ROS system symlinks created"
+
+# Fix nginx configuration for proper external access
+echo_stamp "Fixing nginx configuration for external access"
+if [ -f "/etc/nginx/sites-available/default" ]; then
+    # Update root directory in default nginx config
+    safe_install "sed -i 's|root /var/www/html;|root /var/www;|' /etc/nginx/sites-available/default" "Update nginx root directory"
+    echo_stamp "Updated nginx root directory to /var/www"
+    
+    # Add coptra location blocks to default nginx config
+    safe_install "tee -a /etc/nginx/sites-available/default > /dev/null << 'LOCATION_EOF'
+
+    # Static files from coptra/www
+    location /coptra/ {
+        alias /var/www/ros/coptra/;
+        index index.html;
+        try_files \$uri \$uri/ =404;
+    }
+    
+    # Static files from coptra_blocks/www
+    location /coptra_blocks/ {
+        alias /var/www/ros/coptra_blocks/;
+        index index.html;
+        try_files \$uri \$uri/ =404;
+    }
+LOCATION_EOF" "Add coptra location blocks to default nginx config"
+    echo_stamp "Added coptra location blocks to default nginx config"
+fi
+
+# Ensure fcgiwrap is running for CGI support
+safe_install "systemctl enable fcgiwrap" "Enable fcgiwrap service"
+safe_install "systemctl start fcgiwrap" "Start fcgiwrap service"
+
+# Test and reload nginx configuration
+safe_install "nginx -t" "Test nginx configuration"
+safe_install "systemctl reload nginx" "Reload nginx configuration"
+
+echo_stamp "Nginx configuration fixed for external access"
 
 # Debug: final env confirmation
 echo_stamp "DEBUG: Final which catkin_make: $(command -v catkin_make || echo 'not found')"
