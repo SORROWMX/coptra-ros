@@ -339,6 +339,8 @@ echo_stamp "Using ROS workspace coptra package only (no legacy install)"
 echo_stamp "Change permissions for catkin_ws"
 chown -Rf orangepi:orangepi /home/orangepi/catkin_ws
 chown -Rf orangepi:orangepi /opt/ros/noetic/lib/ 2>/dev/null || true
+# Fix permissions for Python packages in devel space
+chown -Rf orangepi:orangepi /home/orangepi/catkin_ws/devel/lib/python3/dist-packages/ 2>/dev/null || true
 cd /home/orangepi/catkin_ws
 echo_stamp "Update www"
 # Update www with roswww_static from orangepi user

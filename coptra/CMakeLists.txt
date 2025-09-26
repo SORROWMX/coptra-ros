@@ -125,8 +125,7 @@ generate_messages(
   std_msgs
   geometry_msgs
   sensor_msgs
-  
-  LANGS gencpp
+  LANGS gencpp genpy
 )
 
 ################################################
