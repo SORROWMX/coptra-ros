@@ -513,7 +513,6 @@ EOF" "Create nginx ROS configuration"
     
     echo_stamp "Nginx configured successfully for ROS"
 fi
-fi
 
 echo_stamp "Make \$HOME/examples symlink"
 # Check for examples in the correct path
