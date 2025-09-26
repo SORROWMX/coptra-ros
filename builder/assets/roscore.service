@@ -3,10 +3,23 @@ Description=Launcher for the ROS master, parameter server and rosout logging nod
 
 [Service]
 User=orangepi
-ExecStart=/bin/sh -c ". /opt/ros/noetic/setup.sh; export ROS_HOSTNAME=localhost; export ROS_IP=127.0.0.1; exec roscore"
+Type=exec
+WorkingDirectory=/home/orangepi
+Environment="HOME=/home/orangepi"
+Environment="USER=orangepi"
+Environment="ROS_HOSTNAME=localhost"
+Environment="ROS_IP=127.0.0.1"
+Environment="ROS_MASTER_URI=http://localhost:11311"
+Environment="ROS_ROOT=/opt/ros/noetic"
+Environment="ROS_DISTRO=noetic"
+Environment="PATH=/opt/ros/noetic/bin:/home/orangepi/catkin_ws/devel/lib:/usr/local/bin:/usr/bin:/bin"
+Environment="LD_LIBRARY_PATH=/opt/ros/noetic/lib:/home/orangepi/catkin_ws/devel/lib"
+Environment="ROS_PACKAGE_PATH=/home/orangepi/catkin_ws/src:/opt/ros/noetic/share:/home/orangepi/catkin_ws/devel/share"
+Environment="PYTHONPATH=/opt/ros/noetic/lib/python3/dist-packages:/home/orangepi/catkin_ws/devel/lib/python3/dist-packages"
+Environment="CMAKE_PREFIX_PATH=/opt/ros/noetic:/home/orangepi/catkin_ws/devel"
+ExecStart=/bin/bash -l -c "roscore"
 Restart=on-failure
 RestartSec=3
-
 
 [Install]
 WantedBy=multi-user.target
