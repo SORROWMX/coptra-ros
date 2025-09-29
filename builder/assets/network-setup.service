@@ -1,7 +1,7 @@
 [Unit]
 Description=Network Setup Service for Coptra
-After=network.target
-Wants=network.target
+After=network.target hostapd.service dnsmasq.service NetworkManager.service
+Wants=hostapd.service dnsmasq.service
 
 [Service]
 Type=oneshot

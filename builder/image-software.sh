@@ -197,6 +197,9 @@ nmap \
 lsof \
 git \
 dnsmasq  \
+hostapd \
+iw \
+rfkill \
 tmux \
 tree \
 vim \

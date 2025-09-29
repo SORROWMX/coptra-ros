@@ -10,10 +10,7 @@ const noTopics = document.getElementById('no-topics');
 const topicMessage = document.getElementById('topic-message');
 const notification = document.getElementById('notification');
 
-// Load notifications system
-const script = document.createElement('script');
-script.src = 'js/notifications.js';
-document.head.appendChild(script);
+// notifications.js is loaded in HTML before this script
 
 ros.on('connection', function () {
     connectionStatus.textContent = '✅ Подключено к ROS';
@@ -164,3 +161,6 @@ function init() {
         });
     }
 }
+
+// Expose for onclick in HTML-rendered list items
+window.viewTopic = viewTopic;

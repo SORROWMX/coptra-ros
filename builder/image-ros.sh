@@ -786,6 +786,13 @@ export ROS_PACKAGE_PATH=/home/orangepi/catkin_ws/src:/opt/ros/noetic/share:/home
 EOF
 chmod 644 /etc/profile.d/coptra_ros_env.sh
 
+# Ensure ROS log directory exists for orangepi and proper ownership
+mkdir -p /home/orangepi/.ros/log
+chown -R orangepi:orangepi /home/orangepi/.ros
+
+# Ensure ROS log environment variables are exported for login shells
+printf '\nexport ROS_HOME=/home/orangepi/.ros\nexport ROS_LOG_DIR=/home/orangepi/.ros/log\n' >> /etc/profile.d/coptra_ros_env.sh
+
 # Fix nginx configuration for proper external access
 echo_stamp "Fixing nginx configuration for external access"
 if [ -f "/etc/nginx/sites-available/default" ]; then

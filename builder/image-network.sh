@@ -74,6 +74,7 @@ domain-needed
 bogus-priv
 no-hosts
 quiet-dhcp6
+log-dhcp
 dhcp-range=192.168.11.100,192.168.11.200,12h
 dhcp-option=3,192.168.11.1
 dhcp-option=6,192.168.11.1
@@ -97,22 +98,25 @@ mkdir -p /etc/hostapd
 NEW_SSID='coptra-'$(od -An -N4 -tu4 /dev/urandom | tr -d ' ' | cut -c 1-4)
 echo_stamp "Generated SSID: ${NEW_SSID}"
 
-# Create hostapd configuration file
+# Create hostapd configuration file (robust settings for Broadcom dhd)
 cat << EOF > /etc/hostapd/hostapd.conf
+country_code=RU
 interface=wlan0
 driver=nl80211
 ssid=${NEW_SSID}
 hw_mode=g
-channel=7
-wmm_enabled=0
+channel=1
+wmm_enabled=1
+ieee80211d=1
+ieee80211n=1
 macaddr_acl=0
 auth_algs=1
 ignore_broadcast_ssid=0
 wpa=2
 wpa_passphrase=coptrawifi
 wpa_key_mgmt=WPA-PSK
-wpa_pairwise=TKIP
 rsn_pairwise=CCMP
+ieee80211w=0
 EOF
 
 # Set proper permissions
@@ -153,6 +157,7 @@ case "$1" in
     ap) 
         echo "Switching to WiFi Access Point mode..."
         systemctl stop NetworkManager
+        systemctl stop wpa_supplicant 2>/dev/null || true
         systemctl start hostapd dnsmasq
         ip addr add 192.168.11.1/24 dev wlan0 2>/dev/null || true
         CURRENT_SSID=$(get_current_ssid)
@@ -174,6 +179,7 @@ case "$1" in
     eth0)
         echo "Switching to Ethernet-only mode..."
         systemctl stop hostapd dnsmasq NetworkManager
+        systemctl stop wpa_supplicant 2>/dev/null || true
         ip addr del 192.168.11.1/24 dev wlan0 2>/dev/null || true
         echo "✅ Ethernet-only mode active"
         echo "   WiFi disabled"

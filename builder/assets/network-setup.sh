@@ -34,6 +34,18 @@ echo_stamp "Network routing configured successfully"
 # Apply AP/DHCP fixes only if hostapd is intended to run (AP mode)
 CHANGED=false
 if systemctl is-active --quiet hostapd; then
+    # Ensure hostapd has robust settings
+    if [ -f /etc/hostapd/hostapd.conf ]; then
+        grep -q '^country_code=' /etc/hostapd/hostapd.conf || echo 'country_code=RU' >> /etc/hostapd/hostapd.conf
+        sed -i 's/^channel=.*/channel=1/' /etc/hostapd/hostapd.conf 2>/dev/null || true
+        sed -i 's/^wmm_enabled=.*/wmm_enabled=1/' /etc/hostapd/hostapd.conf 2>/dev/null || echo 'wmm_enabled=1' >> /etc/hostapd/hostapd.conf
+        grep -q '^ieee80211d=' /etc/hostapd/hostapd.conf || echo 'ieee80211d=1' >> /etc/hostapd/hostapd.conf
+        grep -q '^ieee80211n=' /etc/hostapd/hostapd.conf || echo 'ieee80211n=1' >> /etc/hostapd/hostapd.conf
+        # Enforce WPA2-PSK CCMP only, disable MFP
+        sed -i '/^wpa_pairwise=/d' /etc/hostapd/hostapd.conf
+        grep -q '^rsn_pairwise=CCMP' /etc/hostapd/hostapd.conf || echo 'rsn_pairwise=CCMP' >> /etc/hostapd/hostapd.conf
+        grep -q '^ieee80211w=' /etc/hostapd/hostapd.conf || echo 'ieee80211w=0' >> /etc/hostapd/hostapd.conf
+    fi
     # Ensure dnsmasq config for AP exists and is sane
     if [ ! -f /etc/dnsmasq.d/coptra.conf ]; then
     echo_stamp "Creating /etc/dnsmasq.d/coptra.conf"
@@ -93,6 +105,7 @@ EOF
     # Apply restarts only if something changed
     if [ "$CHANGED" = true ]; then
         systemctl stop NetworkManager 2>/dev/null || true
+        systemctl stop wpa_supplicant 2>/dev/null || true
         systemctl restart dhcpcd 2>/dev/null || true
         systemctl restart hostapd 2>/dev/null || true
         systemctl restart dnsmasq 2>/dev/null || true
