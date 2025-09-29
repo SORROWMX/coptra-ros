@@ -202,6 +202,7 @@ server {
 }
 EOF
 
+
 # Enable the secure configuration and disable older sites to avoid conflicts
 ln -sf /etc/nginx/sites-available/ros-secure /etc/nginx/sites-enabled/ros-secure
 
