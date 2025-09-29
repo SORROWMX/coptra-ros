@@ -36,10 +36,17 @@ echo_stamp() {
 
 echo_stamp "#1 Write STATIC to /etc/dhcpcd.conf"
 
-cat << EOF >> /etc/dhcpcd.conf
+# Ensure idempotent static IP config for wlan0 in dhcpcd.conf
+if ! grep -qE '^[[:space:]]*interface[[:space:]]+wlan0$' /etc/dhcpcd.conf; then
+cat << 'EOF' >> /etc/dhcpcd.conf
 interface wlan0
 static ip_address=192.168.11.1/24
 EOF
+else
+  if ! grep -qE '^[[:space:]]*static[[:space:]]+ip_address=192\.168\.11\.1/24$' /etc/dhcpcd.conf; then
+    echo "static ip_address=192.168.11.1/24" >> /etc/dhcpcd.conf
+  fi
+fi
 
 echo_stamp "#2 Set wpa_supplicant country"
 
@@ -54,17 +61,22 @@ country=GB
 EOF
 fi
 
-echo_stamp "#3 Write dhcp-config to /etc/dnsmasq.conf"
+echo_stamp "#3 Write dhcp-config to /etc/dnsmasq.d/coptra.conf"
 
-cat << EOF >> /etc/dnsmasq.conf
+mkdir -p /etc/dnsmasq.d
+cat << EOF > /etc/dnsmasq.d/coptra.conf
 interface=wlan0
+bind-interfaces
+except-interface=end1
 address=/coptra/192.168.11.1
-dhcp-range=192.168.11.100,192.168.11.200,12h
-no-hosts
-filterwin2k
-bogus-priv
+dhcp-authoritative
 domain-needed
+bogus-priv
+no-hosts
 quiet-dhcp6
+dhcp-range=192.168.11.100,192.168.11.200,12h
+dhcp-option=3,192.168.11.1
+dhcp-option=6,192.168.11.1
 EOF
 
 echo_stamp "#4 Configure NetworkManager to exclude wlan0"

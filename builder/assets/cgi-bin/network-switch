@@ -1,0 +1,23 @@
+#!/bin/bash
+
+echo "Content-Type: application/json"
+echo ""
+
+if [ "$REQUEST_METHOD" = "POST" ]; then
+    read -r POST_DATA
+    MODE=$(echo "$POST_DATA" | grep -o '"mode":"[^"]*"' | cut -d'"' -f4)
+    if [ -n "$MODE" ]; then
+        /usr/local/bin/network-switch "$MODE" > /dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            echo '{"status":"success","message":"Mode switched successfully"}'
+        else
+            echo '{"status":"error","message":"Failed to switch mode"}'
+        fi
+    else
+        echo '{"status":"error","message":"Invalid mode parameter"}'
+    fi
+else
+    echo '{"status":"error","message":"Method not allowed"}'
+fi
+
+

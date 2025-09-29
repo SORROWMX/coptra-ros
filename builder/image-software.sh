@@ -647,10 +647,13 @@ echo_stamp "Setup CGI scripts for network management"
 systemctl enable fcgiwrap
 systemctl start fcgiwrap
 
-# Create CGI directory
+# Create CGI directory and prefer asset scripts if present
 mkdir -p /usr/lib/cgi-bin
+ASSETS_CGI_DIR="/home/orangepi/catkin_ws/src/coptra-ros/builder/assets/cgi-bin"
 
-# Create network switch CGI script
+if [ -f "$ASSETS_CGI_DIR/network-switch" ]; then
+  cp "$ASSETS_CGI_DIR/network-switch" /usr/lib/cgi-bin/network-switch
+else
 cat << 'EOF' > /usr/lib/cgi-bin/network-switch
 #!/bin/bash
 
@@ -678,8 +681,11 @@ else
     echo '{"status": "error", "message": "Method not allowed"}'
 fi
 EOF
+fi
 
-# Create network status CGI script
+if [ -f "$ASSETS_CGI_DIR/network-status" ]; then
+  cp "$ASSETS_CGI_DIR/network-status" /usr/lib/cgi-bin/network-status
+else
 cat << 'EOF' > /usr/lib/cgi-bin/network-status
 #!/bin/bash
 
@@ -740,8 +746,11 @@ cat << JSON_EOF
 }
 JSON_EOF
 EOF
+fi
 
-# Create restart network CGI script
+if [ -f "$ASSETS_CGI_DIR/restart-network" ]; then
+  cp "$ASSETS_CGI_DIR/restart-network" /usr/lib/cgi-bin/restart-network
+else
 cat << 'EOF' > /usr/lib/cgi-bin/restart-network
 #!/bin/bash
 
@@ -761,11 +770,244 @@ else
     echo '{"status": "error", "message": "Method not allowed"}'
 fi
 EOF
+fi
 
-# Make CGI scripts executable
-chmod +x /usr/lib/cgi-bin/network-switch
-chmod +x /usr/lib/cgi-bin/network-status
-chmod +x /usr/lib/cgi-bin/restart-network
+if [ -f "$ASSETS_CGI_DIR/wifi-scan" ]; then
+  cp "$ASSETS_CGI_DIR/wifi-scan" /usr/lib/cgi-bin/wifi-scan
+else
+cat << 'EOF' > /usr/lib/cgi-bin/wifi-scan
+#!/bin/bash
+
+echo "Content-Type: application/json"
+echo ""
+
+# Function to scan WiFi networks using nmcli
+scan_wifi_networks() {
+    # Check if NetworkManager is available
+    if ! command -v nmcli &> /dev/null; then
+        echo '{"error": "NetworkManager not available"}'
+        exit 1
+    fi
+    
+    # Scan for available networks
+    nmcli -t -f SSID,SIGNAL,SECURITY dev wifi list 2>/dev/null | while IFS=':' read -r ssid signal security; do
+        # Skip empty SSIDs
+        if [ -n "$ssid" ] && [ "$ssid" != "--" ]; then
+            # Determine security type
+            if echo "$security" | grep -q "WPA"; then
+                security_type="WPA"
+            elif echo "$security" | grep -q "WEP"; then
+                security_type="WEP"
+            else
+                security_type="Open"
+            fi
+            
+            # Output JSON for each network
+            echo "{\"ssid\":\"$ssid\",\"signal\":\"$signal\",\"security\":\"$security_type\"},"
+        fi
+    done
+}
+
+# Alternative method using iwlist if nmcli fails
+scan_wifi_networks_iwlist() {
+    if ! command -v iwlist &> /dev/null; then
+        echo '{"error": "iwlist not available"}'
+        exit 1
+    fi
+    
+    # Scan using iwlist
+    iwlist wlan0 scan 2>/dev/null | awk '
+    BEGIN { print "[" }
+    /Cell/ { 
+        if (ssid != "") {
+            printf "{\"ssid\":\"%s\",\"signal\":\"%s\",\"security\":\"%s\"},\n", ssid, signal, security
+        }
+        ssid = ""
+        signal = ""
+        security = "Open"
+    }
+    /ESSID:/ { 
+        gsub(/.*ESSID:"/, "")
+        gsub(/".*/, "")
+        ssid = $0
+    }
+    /Quality=/ { 
+        gsub(/.*Quality=/, "")
+        gsub(/ .*/, "")
+        signal = $0
+    }
+    /Encryption key:on/ { security = "WPA/WEP" }
+    END { 
+        if (ssid != "") {
+            printf "{\"ssid\":\"%s\",\"signal\":\"%s\",\"security\":\"%s\"}\n", ssid, signal, security
+        }
+        print "]"
+    }'
+}
+
+# Try nmcli first, fallback to iwlist
+if command -v nmcli &> /dev/null; then
+    echo "["
+    scan_wifi_networks | sed '$ s/,$//'
+    echo "]"
+else
+    scan_wifi_networks_iwlist
+fi
+EOF
+fi
+
+if [ -f "$ASSETS_CGI_DIR/wifi-connect" ]; then
+  cp "$ASSETS_CGI_DIR/wifi-connect" /usr/lib/cgi-bin/wifi-connect
+else
+cat << 'EOF' > /usr/lib/cgi-bin/wifi-connect
+#!/bin/bash
+
+echo "Content-Type: application/json"
+echo ""
+
+# Read POST data
+if [ "$REQUEST_METHOD" = "POST" ]; then
+    read -r POST_DATA
+    
+    # Parse JSON data (simple parsing)
+    SSID=$(echo "$POST_DATA" | grep -o '"ssid":"[^"]*"' | cut -d'"' -f4)
+    PASSWORD=$(echo "$POST_DATA" | grep -o '"password":"[^"]*"' | cut -d'"' -f4)
+    
+    if [ -z "$SSID" ]; then
+        echo '{"status": "error", "message": "SSID is required"}'
+        exit 1
+    fi
+    
+    # Function to connect using NetworkManager
+    connect_with_nmcli() {
+        if ! command -v nmcli &> /dev/null; then
+            return 1
+        fi
+        
+        # Stop hostapd and dnsmasq if running
+        systemctl stop hostapd dnsmasq 2>/dev/null
+        
+        # Start NetworkManager
+        systemctl start NetworkManager 2>/dev/null
+        
+        # Wait a moment for NetworkManager to start
+        sleep 2
+        
+        # Connect to the network
+        if [ -n "$PASSWORD" ]; then
+            # Network with password
+            nmcli dev wifi connect "$SSID" password "$PASSWORD" 2>/dev/null
+        else
+            # Open network
+            nmcli dev wifi connect "$SSID" 2>/dev/null
+        fi
+        
+        return $?
+    }
+    
+    # Function to connect using wpa_supplicant
+    connect_with_wpa_supplicant() {
+        # Stop hostapd and dnsmasq
+        systemctl stop hostapd dnsmasq 2>/dev/null
+        
+        # Create wpa_supplicant configuration
+        WPA_CONF="/etc/wpa_supplicant/wpa_supplicant.conf"
+        
+        # Backup existing config
+        if [ -f "$WPA_CONF" ]; then
+            cp "$WPA_CONF" "$WPA_CONF.backup.$(date +%s)"
+        fi
+        
+        # Create new config
+        cat > "$WPA_CONF" << WPA_EOF
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+country=US
+
+network={
+    ssid="$SSID"
+WPA_EOF
+        
+        if [ -n "$PASSWORD" ]; then
+            # Generate PSK from password
+            PSK=$(wpa_passphrase "$SSID" "$PASSWORD" | grep psk= | tail -1 | cut -d'=' -f2)
+            echo "    psk=$PSK" >> "$WPA_CONF"
+        else
+            echo "    key_mgmt=NONE" >> "$WPA_CONF"
+        fi
+        
+        echo "}" >> "$WPA_CONF"
+        
+        # Restart wpa_supplicant
+        systemctl restart wpa_supplicant 2>/dev/null
+        
+        # Wait for connection
+        sleep 5
+        
+        # Check if connected
+        if iwconfig wlan0 2>/dev/null | grep -q "ESSID:\"$SSID\""; then
+            return 0
+        else
+            return 1
+        fi
+    }
+    
+    # Try NetworkManager first, fallback to wpa_supplicant
+    if connect_with_nmcli; then
+        echo '{"status": "success", "message": "Successfully connected to '"$SSID"' using NetworkManager"}'
+    elif connect_with_wpa_supplicant; then
+        echo '{"status": "success", "message": "Successfully connected to '"$SSID"' using wpa_supplicant"}'
+    else
+        echo '{"status": "error", "message": "Failed to connect to '"$SSID"'"}'
+    fi
+    
+else
+    echo '{"status": "error", "message": "Method not allowed"}'
+fi
+EOF
+fi
+
+# Make CGI scripts executable and set proper permissions
+chmod 755 /usr/lib/cgi-bin/network-switch
+chmod 755 /usr/lib/cgi-bin/network-status
+chmod 755 /usr/lib/cgi-bin/restart-network
+chmod 755 /usr/lib/cgi-bin/wifi-scan
+chmod 755 /usr/lib/cgi-bin/wifi-connect
+
+# Set proper ownership for CGI scripts
+chown www-data:www-data /usr/lib/cgi-bin/network-switch
+chown www-data:www-data /usr/lib/cgi-bin/network-status
+chown www-data:www-data /usr/lib/cgi-bin/restart-network
+chown www-data:www-data /usr/lib/cgi-bin/wifi-scan
+chown www-data:www-data /usr/lib/cgi-bin/wifi-connect
+
+# Create CGI security wrapper script
+cat << 'EOF' > /usr/local/bin/cgi-security-wrapper.sh
+#!/bin/bash
+
+# CGI Security Wrapper
+# This script provides additional security for CGI execution
+
+# Log CGI execution
+logger -t cgi-security "CGI script executed: $SCRIPT_NAME by $REMOTE_ADDR"
+
+# Check if request is from local network (optional security measure)
+# Uncomment the following lines to restrict access to local network only
+# if [[ "$REMOTE_ADDR" =~ ^192\.168\. ]] || [[ "$REMOTE_ADDR" =~ ^10\. ]] || [[ "$REMOTE_ADDR" =~ ^172\.(1[6-9]|2[0-9]|3[0-1])\. ]]; then
+#     # Allow local network access
+#     true
+# else
+#     echo "Content-Type: application/json"
+#     echo ""
+#     echo '{"error": "Access denied from external network"}'
+#     exit 1
+# fi
+
+# Execute the actual CGI script
+exec "$@"
+EOF
+
+chmod +x /usr/local/bin/cgi-security-wrapper.sh
 
 echo_stamp "Attempting to kill dirmngr"
 gpgconf --kill dirmngr

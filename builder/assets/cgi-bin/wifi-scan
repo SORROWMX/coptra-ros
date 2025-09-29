@@ -1,0 +1,67 @@
+#!/bin/bash
+
+echo "Content-Type: application/json"
+echo ""
+
+# Prefer nmcli, fallback to iwlist. Output a JSON array of networks.
+
+scan_with_nmcli() {
+    if ! command -v nmcli >/dev/null 2>&1; then
+        return 1
+    fi
+    # -t terse, fields: SSID,SIGNAL,SECURITY
+    echo "["
+    nmcli -t -f SSID,SIGNAL,SECURITY dev wifi list 2>/dev/null | while IFS=':' read -r ssid signal security; do
+        # Skip empty SSIDs
+        if [ -n "$ssid" ] && [ "$ssid" != "--" ]; then
+            if echo "$security" | grep -q "WPA"; then
+                security_type="WPA"
+            elif echo "$security" | grep -q "WEP"; then
+                security_type="WEP"
+            else
+                security_type="Open"
+            fi
+            printf '{"ssid":"%s","signal":"%s","security":"%s"},\n' "${ssid}" "${signal}" "${security_type}"
+        fi
+    done | sed '$ s/,$//'
+    echo "]"
+    return 0
+}
+
+scan_with_iwlist() {
+    if ! command -v iwlist >/dev/null 2>&1; then
+        echo '{"error":"iwlist not available"}'
+        return 1
+    fi
+    iwlist wlan0 scan 2>/dev/null | awk '
+    BEGIN { print "[" }
+    /Cell/ {
+        if (ssid != "") {
+            printf "{\"ssid\":\"%s\",\"signal\":\"%s\",\"security\":\"%s\"},\n", ssid, signal, security
+        }
+        ssid = ""; signal = ""; security = "Open"
+    }
+    /ESSID:/ {
+        gsub(/.*ESSID:\"/, ""); gsub(/\".*/, ""); ssid = $0
+    }
+    /Quality=/ {
+        gsub(/.*Quality=/, ""); gsub(/ .*/, ""); signal = $0
+    }
+    /Encryption key:on/ { security = "WPA/WEP" }
+    END {
+        if (ssid != "") {
+            printf "{\"ssid\":\"%s\",\"signal\":\"%s\",\"security\":\"%s\"}\n", ssid, signal, security
+        }
+        print "]"
+    }'
+}
+
+# Try nmcli first
+if scan_with_nmcli; then
+    exit 0
+fi
+
+# Fallback
+scan_with_iwlist
+
+

@@ -72,6 +72,27 @@
 				</div>
 			</div>
 			
+			<!-- WiFi Scanner Section -->
+			<div class="wifi-scanner-section">
+				<h3 style="text-align: center; margin-bottom: 20px; color: #333;">📡 Сканирование WiFi сетей</h3>
+				<div class="scanner-controls">
+					<button class="control-btn primary" onclick="scanWiFiNetworks()">
+						<span>🔍</span>
+						<span>Сканировать сети</span>
+					</button>
+					<button class="control-btn" onclick="clearWiFiList()">
+						<span>🗑️</span>
+						<span>Очистить список</span>
+					</button>
+				</div>
+				
+				<div class="wifi-networks-list" id="wifi-networks-list">
+					<div class="no-networks" id="no-networks">
+						<p>Нажмите "Сканировать сети" для поиска доступных WiFi сетей</p>
+					</div>
+				</div>
+			</div>
+			
 			<div class="controls-section">
 				<h3 style="text-align: center; margin-bottom: 20px; color: #333;">Быстрые действия</h3>
 				<div class="control-buttons">
@@ -94,6 +115,30 @@
 	
 	<div class="notification" id="notification"></div>
 	
+	<!-- WiFi Connection Modal -->
+	<div class="wifi-modal" id="wifi-modal">
+		<div class="wifi-modal-content">
+			<div class="wifi-modal-header">
+				<h3 class="wifi-modal-title">Подключение к WiFi сети</h3>
+				<button class="wifi-modal-close" onclick="closeWiFiModal()">&times;</button>
+			</div>
+			<form id="wifi-connection-form">
+				<div class="wifi-form-group">
+					<label class="wifi-form-label" for="wifi-ssid">Название сети (SSID)</label>
+					<input type="text" class="wifi-form-input" id="wifi-ssid" readonly>
+				</div>
+				<div class="wifi-form-group">
+					<label class="wifi-form-label" for="wifi-password">Пароль</label>
+					<input type="password" class="wifi-form-input" id="wifi-password" placeholder="Введите пароль WiFi сети">
+				</div>
+				<div class="wifi-form-actions">
+					<button type="button" class="wifi-btn wifi-btn-secondary" onclick="closeWiFiModal()">Отмена</button>
+					<button type="submit" class="wifi-btn wifi-btn-primary">Подключиться</button>
+				</div>
+			</form>
+		</div>
+	</div>
+	
 	<script type="text/javascript" src="js/notifications.js"></script>
 	<script>
 		let currentMode = 'unknown';
@@ -111,7 +156,7 @@
 			notifications.info('Переключение в режим ' + mode + '...');
 			
 			try {
-				const response = await fetch('./cgi-bin/network-switch', {
+                const response = await fetch('/cgi-bin/network-switch', {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
@@ -139,7 +184,7 @@
 		// Refresh status
 		async function refreshStatus() {
 			try {
-				const response = await fetch('./cgi-bin/network-status');
+                const response = await fetch('/cgi-bin/network-status');
 				
 				if (!response.ok) {
 					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -232,7 +277,7 @@
 			notifications.info('Перезапуск сетевых сервисов...');
 			
 			try {
-				const response = await fetch('./cgi-bin/restart-network', {
+                const response = await fetch('/cgi-bin/restart-network', {
 					method: 'POST'
 				});
 				
@@ -252,6 +297,225 @@
 				}
 			}
 		}
+		
+		// WiFi Scanner Functions
+		let wifiNetworks = [];
+		
+		// Scan for available WiFi networks
+		async function scanWiFiNetworks() {
+			notifications.info('Сканирование WiFi сетей...');
+			
+			try {
+                const response = await fetch('/cgi-bin/wifi-scan');
+				
+				if (!response.ok) {
+					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+				}
+				
+				const networks = await response.json();
+				
+				if (networks.error) {
+					throw new Error(networks.error);
+				}
+				
+				wifiNetworks = networks;
+				displayWiFiNetworks(networks);
+				
+				if (networks.length > 0) {
+					notifications.success(`Найдено ${networks.length} WiFi сетей`);
+				} else {
+					notifications.warning('WiFi сети не найдены');
+				}
+				
+			} catch (error) {
+				console.error('WiFi scan error:', error);
+				notifications.error('Ошибка сканирования WiFi: ' + error.message);
+			}
+		}
+		
+		// Display WiFi networks in the list
+		function displayWiFiNetworks(networks) {
+			const listContainer = document.getElementById('wifi-networks-list');
+			const noNetworks = document.getElementById('no-networks');
+			
+			if (networks.length === 0) {
+				noNetworks.style.display = 'block';
+				return;
+			}
+			
+			noNetworks.style.display = 'none';
+			
+			// Clear existing networks
+			listContainer.innerHTML = '';
+			
+			networks.forEach(network => {
+				const networkItem = createWiFiNetworkItem(network);
+				listContainer.appendChild(networkItem);
+			});
+		}
+		
+		// Create WiFi network item element
+		function createWiFiNetworkItem(network) {
+			const item = document.createElement('div');
+			item.className = 'wifi-network-item';
+			
+			const signalStrength = getSignalStrength(network.signal);
+			const securityIcon = getSecurityIcon(network.security);
+			
+			item.innerHTML = `
+				<div class="wifi-network-info">
+					<div class="wifi-network-ssid">${network.ssid}</div>
+					<div class="wifi-network-details">
+						<div class="wifi-signal-strength">
+							<div class="signal-bars">
+								${signalStrength}
+							</div>
+							<span>${network.signal || 'N/A'}</span>
+						</div>
+						<div class="wifi-security">
+							${securityIcon}
+							<span>${network.security || 'Open'}</span>
+						</div>
+					</div>
+				</div>
+				<button class="wifi-connect-btn" onclick="connectToWiFi('${network.ssid}', '${network.security}')">
+					Подключиться
+				</button>
+			`;
+			
+			return item;
+		}
+		
+		// Get signal strength bars
+		function getSignalStrength(signal) {
+			if (!signal) return '<div class="signal-bar"></div><div class="signal-bar"></div><div class="signal-bar"></div><div class="signal-bar"></div>';
+			
+			const signalNum = parseInt(signal);
+			let activeBars = 0;
+			
+			if (signalNum >= 75) activeBars = 4;
+			else if (signalNum >= 50) activeBars = 3;
+			else if (signalNum >= 25) activeBars = 2;
+			else if (signalNum > 0) activeBars = 1;
+			
+			let bars = '';
+			for (let i = 1; i <= 4; i++) {
+				bars += `<div class="signal-bar ${i <= activeBars ? 'active' : ''}"></div>`;
+			}
+			
+			return bars;
+		}
+		
+		// Get security icon
+		function getSecurityIcon(security) {
+			if (security === 'Open') {
+				return '<span>🔓</span>';
+			} else if (security === 'WPA' || security === 'WPA/WEP') {
+				return '<span>🔒</span>';
+			} else {
+				return '<span>🔐</span>';
+			}
+		}
+		
+		// Connect to WiFi network
+		function connectToWiFi(ssid, security) {
+			// Check if password is required
+			if (security !== 'Open') {
+				showWiFiModal(ssid);
+			} else {
+				// Connect to open network
+				connectToNetwork(ssid, '');
+			}
+		}
+		
+		// Show WiFi connection modal
+		function showWiFiModal(ssid) {
+			const modal = document.getElementById('wifi-modal');
+			const ssidInput = document.getElementById('wifi-ssid');
+			const passwordInput = document.getElementById('wifi-password');
+			
+			ssidInput.value = ssid;
+			passwordInput.value = '';
+			passwordInput.focus();
+			
+			modal.style.display = 'block';
+		}
+		
+		// Close WiFi modal
+		function closeWiFiModal() {
+			const modal = document.getElementById('wifi-modal');
+			modal.style.display = 'none';
+		}
+		
+		// Clear WiFi networks list
+		function clearWiFiList() {
+			const listContainer = document.getElementById('wifi-networks-list');
+			const noNetworks = document.getElementById('no-networks');
+			
+			listContainer.innerHTML = '';
+			noNetworks.style.display = 'block';
+			wifiNetworks = [];
+		}
+		
+		// Connect to network
+		async function connectToNetwork(ssid, password) {
+			notifications.info(`Подключение к сети ${ssid}...`);
+			
+			try {
+                const response = await fetch('/cgi-bin/wifi-connect', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ 
+						ssid: ssid, 
+						password: password 
+					})
+				});
+				
+				if (!response.ok) {
+					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+				}
+				
+				const result = await response.json();
+				
+				if (result.status === 'success') {
+					notifications.success(result.message);
+					closeWiFiModal();
+					// Refresh status after connection
+					setTimeout(refreshStatus, 3000);
+				} else {
+					notifications.error(result.message);
+				}
+				
+			} catch (error) {
+				console.error('WiFi connection error:', error);
+				notifications.error('Ошибка подключения: ' + error.message);
+			}
+		}
+		
+		// Handle WiFi connection form submission
+		document.getElementById('wifi-connection-form').addEventListener('submit', function(e) {
+			e.preventDefault();
+			
+			const ssid = document.getElementById('wifi-ssid').value;
+			const password = document.getElementById('wifi-password').value;
+			
+			if (!ssid) {
+				notifications.error('SSID не может быть пустым');
+				return;
+			}
+			
+			connectToNetwork(ssid, password);
+		});
+		
+		// Close modal when clicking outside
+		window.addEventListener('click', function(e) {
+			const modal = document.getElementById('wifi-modal');
+			if (e.target === modal) {
+				closeWiFiModal();
+			}
+		});
 		
 		// Initialize page
 		document.addEventListener('DOMContentLoaded', function() {

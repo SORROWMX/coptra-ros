@@ -1,0 +1,83 @@
+#!/bin/bash
+
+echo "Content-Type: application/json"
+echo ""
+
+# Read POST body
+read -r POST_DATA
+
+# Simple JSON parsing without jq
+SSID=$(echo "$POST_DATA" | grep -o '"ssid":"[^"]*"' | cut -d'"' -f4)
+PASSWORD=$(echo "$POST_DATA" | grep -o '"password":"[^"]*"' | cut -d'"' -f4)
+
+if [ -z "$SSID" ]; then
+    echo '{"status":"error","message":"SSID is required"}'
+    exit 0
+fi
+
+# Prefer NetworkManager if available
+if command -v nmcli >/dev/null 2>&1; then
+    systemctl stop hostapd dnsmasq >/dev/null 2>&1
+    systemctl start NetworkManager >/dev/null 2>&1
+    sleep 1
+    if [ -n "$PASSWORD" ]; then
+        if nmcli dev wifi connect "$SSID" password "$PASSWORD" >/dev/null 2>&1; then
+            echo '{"status":"success","message":"Connected using NetworkManager"}'
+            exit 0
+        else
+            echo '{"status":"error","message":"NetworkManager connect failed"}'
+            exit 0
+        fi
+    else
+        if nmcli dev wifi connect "$SSID" >/dev/null 2>&1; then
+            echo '{"status":"success","message":"Connected to open network using NetworkManager"}'
+            exit 0
+        else
+            echo '{"status":"error","message":"NetworkManager connect failed (open)"}'
+            exit 0
+        fi
+    fi
+fi
+
+# Fallback to wpa_supplicant
+WPA_CONF="/etc/wpa_supplicant/wpa_supplicant.conf"
+systemctl stop hostapd dnsmasq >/dev/null 2>&1
+
+# Backup existing config
+if [ -f "$WPA_CONF" ]; then
+    cp "$WPA_CONF" "$WPA_CONF.backup.$(date +%s)"
+fi
+
+cat > "$WPA_CONF" << WPA_EOF
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+country=US
+
+network={
+    ssid="$SSID"
+WPA_EOF
+
+if [ -n "$PASSWORD" ]; then
+    if command -v wpa_passphrase >/dev/null 2>&1; then
+        PSK=$(wpa_passphrase "$SSID" "$PASSWORD" | awk -F= '/psk=/{print $2}' | tail -1)
+        echo "    psk=$PSK" >> "$WPA_CONF"
+    else
+        # Plaintext fallback (not ideal)
+        echo "    psk=\"$PASSWORD\"" >> "$WPA_CONF"
+    fi
+else
+    echo "    key_mgmt=NONE" >> "$WPA_CONF"
+fi
+
+echo "}" >> "$WPA_CONF"
+
+systemctl restart wpa_supplicant >/dev/null 2>&1
+sleep 3
+
+if iwconfig wlan0 2>/dev/null | grep -q "ESSID:\"$SSID\""; then
+    echo '{"status":"success","message":"Connected using wpa_supplicant"}'
+else
+    echo '{"status":"error","message":"Failed to connect using wpa_supplicant"}'
+fi
+
+

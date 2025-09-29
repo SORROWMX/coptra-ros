@@ -1,0 +1,17 @@
+#!/bin/bash
+
+echo "Content-Type: application/json"
+echo ""
+
+if [ "$REQUEST_METHOD" = "POST" ]; then
+    systemctl restart hostapd dnsmasq NetworkManager > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        echo '{"status":"success","message":"Network services restarted successfully"}'
+    else
+        echo '{"status":"error","message":"Failed to restart network services"}'
+    fi
+else
+    echo '{"status":"error","message":"Method not allowed"}'
+fi
+
+

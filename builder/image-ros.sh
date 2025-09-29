@@ -343,49 +343,30 @@ chown -Rf orangepi:orangepi /opt/ros/noetic/lib/ 2>/dev/null || true
 chown -Rf orangepi:orangepi /home/orangepi/catkin_ws/devel/lib/python3/dist-packages/ 2>/dev/null || true
 cd /home/orangepi/catkin_ws
 echo_stamp "Update www"
-# Update www with roswww_static from orangepi user
-safe_install 'sudo -u orangepi bash -lc "
-  set -e
-  # Source ROS environment
-  source /opt/ros/noetic/setup.bash
-  if [ -f /home/orangepi/catkin_ws/devel/setup.bash ]; then
-    source /home/orangepi/catkin_ws/devel/setup.bash
-  fi
-  
-  echo \"DEBUG[www]: Using ROS_PACKAGE_PATH=\$ROS_PACKAGE_PATH\"
-  echo \"DEBUG[www]: Available packages:\"
-  rospack list | grep -E \"(coptra|coptra_blocks)\" || echo \"No coptra packages found\"
-  
-  # Set default package for roswww_static
-  export ROSWWW_DEFAULT=coptra
-  
-  echo \"DEBUG[www]: Running rosrun roswww_static update from orangepi user\"
-  
-  # Run roswww_static update
-  rosrun roswww_static update
-  
-  echo \"DEBUG[www]: roswww_static update completed\"
-  echo \"DEBUG[www]: Created files:\"
-  ls -la /home/orangepi/.ros/www/ || echo \"No www directory created\"
-"' "Update www via roswww_static" || {
-  # Fallback: manually create www structure
-  echo_stamp "Fallback: manually create www structure"
-  safe_install "mkdir -p /home/orangepi/.ros/www" "Create www directory"
-  
-  # Create symlinks manually if packages are available
-  if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra/www" ]; then
+# Create www structure manually (more reliable than roswww_static)
+echo_stamp "Creating www structure manually"
+safe_install "mkdir -p /home/orangepi/.ros/www" "Create www directory"
+
+# Create symlinks manually if packages are available
+if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra/www" ]; then
     safe_install "ln -sf /home/orangepi/catkin_ws/src/coptra-ros/coptra/www /home/orangepi/.ros/www/coptra" "Create coptra symlink"
-  fi
-  if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www" ]; then
+    echo_stamp "coptra symlink created"
+else
+    echo_stamp "Warning: coptra/www directory not found for symlink creation" "ERROR"
+fi
+
+if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www" ]; then
     safe_install "ln -sf /home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www /home/orangepi/.ros/www/coptra_blocks" "Create coptra_blocks symlink"
-  fi
-  
-  # Create index.html with redirect to coptra
-  safe_install "echo \"<meta http-equiv=refresh content=\\\"0; url=coptra/\\\">\" > /home/orangepi/.ros/www/index.html" "Create index.html redirect"
-  
-  chown -R orangepi:orangepi /home/orangepi/.ros/www || true
-  echo_stamp "Manual www structure created"
-}
+    echo_stamp "coptra_blocks symlink created"
+else
+    echo_stamp "Warning: coptra_blocks/www directory not found for symlink creation" "ERROR"
+fi
+
+# Create index.html with redirect to coptra
+safe_install "echo \"<meta http-equiv=refresh content=\\\"0; url=coptra/\\\">\" > /home/orangepi/.ros/www/index.html" "Create index.html redirect"
+
+chown -R orangepi:orangepi /home/orangepi/.ros/www || true
+echo_stamp "Manual www structure created successfully"
 
 
 echo_stamp "Setup nginx web files"
@@ -401,24 +382,55 @@ else
     # Remove existing files to avoid conflicts
     rm -rf /var/www/ros/*
     
-if [ -d /home/orangepi/.ros/www ]; then
-    # Copy all files from ~/.ros/www to nginx directory
-    # Use -L flag to follow symlinks and copy real files
-    safe_install "cp -rL /home/orangepi/.ros/www/* /var/www/ros/" "Copy all web files from roswww_static"
-    echo_stamp "Web files copied from roswww_static to /var/www/ros/"
+# Always copy directly from source packages (more reliable than roswww_static)
+echo_stamp "Copying web files directly from source packages"
+
+# Debug: show what directories exist
+echo_stamp "DEBUG: Checking source directories:"
+ls -la /home/orangepi/catkin_ws/src/coptra-ros/ 2>/dev/null || echo_stamp "coptra-ros directory not found" "ERROR"
+ls -la /home/orangepi/catkin_ws/src/coptra-ros/coptra/ 2>/dev/null || echo_stamp "coptra directory not found" "ERROR"
+ls -la /home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/ 2>/dev/null || echo_stamp "coptra_blocks directory not found" "ERROR"
+
+# Copy coptra web files
+if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra/www" ]; then
+    echo_stamp "Found coptra/www directory, copying files..."
+    safe_install "cp -rL /home/orangepi/catkin_ws/src/coptra-ros/coptra/www /var/www/ros/coptra" "Copy coptra web files from source"
+    echo_stamp "coptra web files copied successfully"
+    # Verify copy
+    if [ -f "/var/www/ros/coptra/index.html" ]; then
+        echo_stamp "SUCCESS: coptra/index.html found after copy" "SUCCESS"
+    else
+        echo_stamp "ERROR: coptra/index.html not found after copy" "ERROR"
+    fi
 else
-    # Fallback: copy directly from source packages
-    echo_stamp "Warning: /home/orangepi/.ros/www not found, using fallback copy from source packages"
-    if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra/www" ]; then
-        safe_install "cp -rL /home/orangepi/catkin_ws/src/coptra-ros/coptra/www /var/www/ros/coptra" "Copy coptra web files from source (fallback)"
-    fi
-    if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www" ]; then
-        safe_install "cp -rL /home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www /var/www/ros/coptra_blocks" "Copy coptra_blocks web files from source (fallback)"
-    fi
-    # Create index.html with redirect to coptra
-    safe_install "echo \"<meta http-equiv=refresh content=\\\"0; url=coptra/\\\">\" > /var/www/ros/index.html" "Create index.html redirect (fallback)"
-    echo_stamp "Web files copied from source packages to /var/www/ros/ (fallback)"
+    echo_stamp "ERROR: coptra/www directory not found at /home/orangepi/catkin_ws/src/coptra-ros/coptra/www" "ERROR"
 fi
+
+# Copy coptra_blocks web files
+if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www" ]; then
+    echo_stamp "Found coptra_blocks/www directory, copying files..."
+    safe_install "cp -rL /home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www /var/www/ros/coptra_blocks" "Copy coptra_blocks web files from source"
+    echo_stamp "coptra_blocks web files copied successfully"
+    # Verify copy
+    if [ -f "/var/www/ros/coptra_blocks/index.html" ]; then
+        echo_stamp "SUCCESS: coptra_blocks/index.html found after copy" "SUCCESS"
+    else
+        echo_stamp "ERROR: coptra_blocks/index.html not found after copy" "ERROR"
+    fi
+else
+    echo_stamp "ERROR: coptra_blocks/www directory not found at /home/orangepi/catkin_ws/src/coptra-ros/coptra_blocks/www" "ERROR"
+fi
+
+# Create index.html with redirect to coptra
+safe_install "echo \"<meta http-equiv=refresh content=\\\"0; url=coptra/\\\">\" > /var/www/ros/index.html" "Create index.html redirect"
+
+# Final verification
+echo_stamp "Final verification of copied files:"
+ls -la /var/www/ros/ || echo_stamp "ERROR: /var/www/ros/ directory not accessible" "ERROR"
+ls -la /var/www/ros/coptra/ || echo_stamp "ERROR: /var/www/ros/coptra/ directory not accessible" "ERROR"
+ls -la /var/www/ros/coptra_blocks/ || echo_stamp "ERROR: /var/www/ros/coptra_blocks/ directory not accessible" "ERROR"
+
+echo_stamp "Web files copied from source packages to /var/www/ros/"
 
 # Set proper permissions (common for both cases)
     chown -R www-data:www-data /var/www/ros/
@@ -479,9 +491,32 @@ server {
     location /cgi-bin/ {
         alias /usr/lib/cgi-bin/;
         gzip off;
+        
+        # CORS headers for CGI scripts
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization, X-Requested-With' always;
+        add_header 'Access-Control-Max-Age' '3600' always;
+        
+        # Handle preflight OPTIONS requests
+        if (\$request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' '*' always;
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+            add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization, X-Requested-With' always;
+            add_header 'Access-Control-Max-Age' '3600' always;
+            add_header 'Content-Type' 'text/plain; charset=utf-8' always;
+            add_header 'Content-Length' '0' always;
+            return 204;
+        }
+        
         fastcgi_pass unix:/var/run/fcgiwrap.socket;
         include /etc/nginx/fastcgi_params;
         fastcgi_param SCRIPT_FILENAME /usr/lib/cgi-bin\$fastcgi_script_name;
+        
+        # Security headers
+        add_header 'X-Content-Type-Options' 'nosniff' always;
+        add_header 'X-Frame-Options' 'SAMEORIGIN' always;
+        add_header 'X-XSS-Protection' '1; mode=block' always;
     }
 }
 EOF" "Create nginx ROS configuration"
@@ -693,6 +728,63 @@ safe_install "ln -sf /usr/bin/rosversion /opt/ros/noetic/bin/rosversion" "Link r
 safe_install "ln -sf /home/orangepi/catkin_ws/devel/_setup_util.py /opt/ros/noetic/_setup_util.py" "Link _setup_util.py to ROS directory"
 
 echo_stamp "Essential ROS system symlinks created"
+
+# Repair /opt/ros/${ROS_DISTRO}/setup.bash if broken (no _setup_util.py reference)
+echo_stamp "Verify and repair /opt/ros/${ROS_DISTRO}/setup.bash if needed"
+if ! grep -q "_setup_util.py" "/opt/ros/${ROS_DISTRO}/setup.bash" 2>/dev/null; then
+  echo_stamp "Detected minimal setup.bash, installing robust wrapper"
+  tee "/opt/ros/${ROS_DISTRO}/setup.bash" > /dev/null << 'EOF'
+#!/usr/bin/env bash
+# Coptra robust ROS setup wrapper for Noetic
+
+# Prefer catkin/devel if available
+if [ -f "/home/orangepi/catkin_ws/devel/setup.bash" ]; then
+  source "/home/orangepi/catkin_ws/devel/setup.bash"
+fi
+
+# If generated helper exists, source the system underlay
+if [ -f "/opt/ros/noetic/_setup_util.py" ]; then
+  # Minimal environment for catkin-generated underlay
+  export ROS_DISTRO=noetic
+  export ROS_ROOT=/opt/ros/noetic
+  export PATH=/opt/ros/noetic/bin:$PATH
+  export LD_LIBRARY_PATH=/opt/ros/noetic/lib:/home/orangepi/catkin_ws/devel/lib:$LD_LIBRARY_PATH
+  export PYTHONPATH=/opt/ros/noetic/lib/python3/dist-packages:/home/orangepi/catkin_ws/devel/lib/python3/dist-packages:$PYTHONPATH
+  export CMAKE_PREFIX_PATH=/opt/ros/noetic:/home/orangepi/catkin_ws/devel:$CMAKE_PREFIX_PATH
+  export ROS_PACKAGE_PATH=/home/orangepi/catkin_ws/src:/opt/ros/noetic/share:/home/orangepi/catkin_ws/devel/share:$ROS_PACKAGE_PATH
+else
+  # Fallback: export sane defaults so rosrun/rospack work without _setup_util.py
+  export ROS_DISTRO=noetic
+  export ROS_ROOT=/opt/ros/noetic
+  export ROS_HOSTNAME=localhost
+  export ROS_IP=127.0.0.1
+  export PATH=/opt/ros/noetic/bin:$PATH
+  export LD_LIBRARY_PATH=/opt/ros/noetic/lib:/home/orangepi/catkin_ws/devel/lib:$LD_LIBRARY_PATH
+  export PYTHONPATH=/opt/ros/noetic/lib/python3/dist-packages:/home/orangepi/catkin_ws/devel/lib/python3/dist-packages:$PYTHONPATH
+  export CMAKE_PREFIX_PATH=/opt/ros/noetic:/home/orangepi/catkin_ws/devel:$CMAKE_PREFIX_PATH
+  export ROS_PACKAGE_PATH=/home/orangepi/catkin_ws/src:/opt/ros/noetic/share:/home/orangepi/catkin_ws/devel/share:$ROS_PACKAGE_PATH
+fi
+EOF
+  chmod +x "/opt/ros/${ROS_DISTRO}/setup.bash"
+  echo_stamp "Installed robust setup.bash wrapper"
+else
+  echo_stamp "setup.bash looks OK; no repair needed"
+fi
+
+# Ensure global ROS env for login shells
+echo_stamp "Installing /etc/profile.d/coptra_ros_env.sh"
+tee /etc/profile.d/coptra_ros_env.sh > /dev/null << 'EOF'
+# Coptra ROS environment for login shells
+if [ -f /opt/ros/noetic/setup.bash ]; then
+  . /opt/ros/noetic/setup.bash
+fi
+if [ -f /home/orangepi/catkin_ws/devel/setup.bash ]; then
+  . /home/orangepi/catkin_ws/devel/setup.bash
+fi
+# Ensure package path always includes workspace source and devel/share
+export ROS_PACKAGE_PATH=/home/orangepi/catkin_ws/src:/opt/ros/noetic/share:/home/orangepi/catkin_ws/devel/share:$ROS_PACKAGE_PATH
+EOF
+chmod 644 /etc/profile.d/coptra_ros_env.sh
 
 # Fix nginx configuration for proper external access
 echo_stamp "Fixing nginx configuration for external access"
