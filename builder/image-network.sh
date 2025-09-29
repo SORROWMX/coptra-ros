@@ -115,8 +115,11 @@ ignore_broadcast_ssid=0
 wpa=2
 wpa_passphrase=coptrawifi
 wpa_key_mgmt=WPA-PSK
+wpa_pairwise=CCMP
 rsn_pairwise=CCMP
 ieee80211w=0
+ctrl_interface=/run/hostapd
+ctrl_interface_group=0
 EOF
 
 # Set proper permissions
@@ -213,6 +216,14 @@ echo_stamp "#7 Enable services and set initial mode"
 systemctl enable hostapd
 systemctl enable dnsmasq
 systemctl enable dhcpcd
+
+# Ensure regdomain is set before hostapd starts on boot
+mkdir -p /etc/systemd/system/hostapd.service.d
+cat << 'EOF' > /etc/systemd/system/hostapd.service.d/10-regdom.conf
+[Service]
+ExecStartPre=/usr/sbin/iw reg set RU
+EOF
+systemctl daemon-reload
 
 # Set initial mode to Access Point
 systemctl stop NetworkManager

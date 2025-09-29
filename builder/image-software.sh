@@ -110,18 +110,22 @@ mkdir -p /home/orangepi/.ssh
 chown orangepi:orangepi /home/orangepi/.ssh
 chmod 700 /home/orangepi/.ssh
 
-    # Create SSH host keys before starting service
-    echo_stamp "Creating SSH host keys"
-    ssh-keygen -A
-    
-    # Enable SSH service (use only ssh.service for modern OpenSSH)
-    systemctl disable sshd.socket || true
-    systemctl disable sshd.service || true
-    systemctl daemon-reload || true
-    systemctl enable ssh.service
-    
-    # Start SSH service
-    systemctl start ssh.service
+# Create SSH host keys before starting service
+echo_stamp "Creating SSH host keys"
+ssh-keygen -A
+chown root:root /etc/ssh/ssh_host_* || true
+chmod 600 /etc/ssh/ssh_host_* || true
+
+# Enable SSH service (use only ssh.service for modern OpenSSH)
+systemctl disable sshd.socket || true
+systemctl disable sshd.service || true
+systemctl daemon-reload || true
+systemctl enable ssh.service
+
+# Start SSH service
+systemctl start ssh.service
+# Ensure SSH picks up fresh host keys
+systemctl restart ssh.service
 
 # Configure SSH to allow password authentication for orangepi user
 echo_stamp "Configuring SSH authentication"
