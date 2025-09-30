@@ -402,6 +402,15 @@ if [ -d "/home/orangepi/catkin_ws/src/coptra-ros/coptra/www" ]; then
     else
         echo_stamp "ERROR: coptra/index.html not found after copy" "ERROR"
     fi
+
+    # Replace version file with actual content from /etc/coptra_version
+    if [ -f "/etc/coptra_version" ]; then
+        cp -L /etc/coptra_version /var/www/ros/coptra/coptra_version || true
+        chown www-data:www-data /var/www/ros/coptra/coptra_version 2>/dev/null || true
+        echo_stamp "Updated coptra_version with actual content" "SUCCESS"
+    else
+        echo_stamp "WARNING: /etc/coptra_version not found; leaving placeholder" "ERROR"
+    fi
 else
     echo_stamp "ERROR: coptra/www directory not found at /home/orangepi/catkin_ws/src/coptra-ros/coptra/www" "ERROR"
 fi
