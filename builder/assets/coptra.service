@@ -15,8 +15,7 @@ ExecStart=/bin/bash -c "source /opt/ros/noetic/setup.bash; \
                       export PYTHONPATH=/opt/ros/noetic/lib/python3/dist-packages:/home/orangepi/catkin_ws/devel/lib/python3/dist-packages:$PYTHONPATH; \
                       export PATH=/opt/ros/noetic/bin:/home/orangepi/catkin_ws/devel/lib:$PATH; \
                       export CMAKE_PREFIX_PATH=/opt/ros/noetic:/home/orangepi/catkin_ws/devel:$CMAKE_PREFIX_PATH; \
-                      exec stdbuf -o L roslaunch coptra coptra.launch --wait --screen --skip-log-check \
-                      2> >(tee /tmp/coptra.err)"
+                      exec stdbuf -o L roslaunch coptra coptra.launch --wait --screen --skip-log-check"
 
 ExecStartPre=+rm /var/log/coptra.log
 StandardOutput=file:/var/log/coptra.log

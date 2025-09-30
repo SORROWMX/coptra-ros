@@ -458,7 +458,16 @@ server {
     location = /coptra_blocks {
         return 301 /coptra_blocks/;
     }
+    # Serve live coptra log file
+    location = /coptra/coptra.log {
+        alias /var/log/coptra.log;
+        default_type text/plain;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Access-Control-Allow-Origin "*";
+    }
+
     
+
     # Static files from coptra/www
     location /coptra/ {
         alias /var/www/ros/coptra/;
@@ -547,6 +556,7 @@ EOF" "Create nginx ROS configuration"
     safe_install "systemctl enable nginx" "Enable nginx"
     
     echo_stamp "Nginx configured successfully for ROS"
+
 fi
 
 echo_stamp "Make \$HOME/examples symlink"
@@ -802,6 +812,14 @@ if [ -f "/etc/nginx/sites-available/default" ]; then
     
     # Add coptra location blocks to default nginx config
     safe_install "tee -a /etc/nginx/sites-available/default > /dev/null << 'LOCATION_EOF'
+
+    # Serve live coptra log file
+    location = /coptra/coptra.log {
+        alias /var/log/coptra.log;
+        default_type text/plain;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Access-Control-Allow-Origin "*";
+    }
 
     # Static files from coptra/www
     location /coptra/ {

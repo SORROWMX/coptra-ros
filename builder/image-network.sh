@@ -89,6 +89,12 @@ cat << 'EOF' > /etc/NetworkManager/conf.d/99-unmanaged-devices.conf
 unmanaged-devices=interface-name:wlan0
 EOF
 
+echo_stamp "#4.1 Disable NetworkManager and wpa_supplicant to avoid AP conflicts"
+systemctl disable --now NetworkManager 2>/dev/null || true
+systemctl disable --now wpa_supplicant 2>/dev/null || true
+systemctl disable --now wpa_supplicant@wlan0.service 2>/dev/null || true
+pkill -9 wpa_supplicant 2>/dev/null || true
+
 echo_stamp "#5 Create hostapd configuration"
 
 # Create hostapd configuration directory

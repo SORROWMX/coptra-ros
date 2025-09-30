@@ -248,6 +248,21 @@ avahi-utils \
 libnss-mdns \
 device-tree-compiler
 
+echo_stamp "Disable NetworkManager and wpa_supplicant; unmanaged wlan0"
+# Ensure wlan0 is unmanaged by NetworkManager (idempotent)
+mkdir -p /etc/NetworkManager/conf.d
+cat > /etc/NetworkManager/conf.d/99-unmanaged-devices.conf << 'EOF'
+[keyfile]
+unmanaged-devices=interface-name:wlan0
+EOF
+
+# Stop and disable potential conflicting services (ignore errors if not present)
+systemctl disable --now NetworkManager 2>/dev/null || true
+systemctl disable --now wpa_supplicant 2>/dev/null || true
+systemctl disable --now wpa_supplicant@wlan0.service 2>/dev/null || true
+pkill -9 wpa_supplicant 2>/dev/null || true
+rfkill unblock all 2>/dev/null || true
+
 echo_stamp "Installing ROS dependencies"
 # Force remove any existing conflicting packages first (based on Ask Ubuntu solutions)
 echo_stamp "Force removing conflicting packages"

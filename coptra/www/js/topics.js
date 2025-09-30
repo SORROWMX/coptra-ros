@@ -1,5 +1,7 @@
-const url = 'ws://' + location.hostname + ':9090';
-const ros = new ROSLIB.Ros({ url: url });
+const isHttps = location.protocol === 'https:';
+const rosUrl = isHttps ? (location.origin.replace('https://', 'wss://') + '/rosbridge/')
+                       : (location.origin.replace('http://', 'ws://') + '/rosbridge/');
+const ros = new ROSLIB.Ros({ url: rosUrl });
 const params = Object.fromEntries(new URLSearchParams(window.location.search).entries());
 
 // DOM elements
@@ -31,7 +33,7 @@ ros.on('close', function () {
     
     setTimeout(function() {
         // reconnect
-        ros.connect(url);
+        ros.connect(rosUrl);
     }, 2000);
 });
 
@@ -66,7 +68,7 @@ function viewTopicsList() {
             if (type == 'sensor_msgs/Image') {
                 let url = `${location.protocol}//${location.hostname}:8080/stream_viewer?topic=${topic}`; 
                 return `
-                    <li class="topic-item" data-topic="${topic}">
+                    <li class="topic-item" data-topic="${topic}" onclick="window.location.href='${url}'">
                         <div class="topic-name">${topic}</div>
                         <div class="topic-type">${type}</div>
                         <div class="topic-stats">
@@ -113,11 +115,22 @@ function viewTopic(topic) {
     
     ros.getTopicType(topic, function(typeStr) {
         const [pack, type] = typeStr.split('/');
-        let href = `https://docs.ros.org/en/${rosdistro}/api/${pack}/html/msg/${type}.html`;
-        
-        // Update page header with topic info
-        const pageTitle = document.querySelector('.page-title');
-        pageTitle.innerHTML = `📡 ${topic} <a href="${href}" target="_blank" style="font-size: 0.6em; color: #667eea; text-decoration: none;">${typeStr}</a>`;
+
+        function updateHeader(distro) {
+            const safeDistro = (distro && String(distro).trim()) || 'noetic';
+            const href = `https://docs.ros.org/en/${safeDistro}/api/${pack}/html/msg/${type}.html`;
+            const pageTitle = document.querySelector('.page-title');
+            pageTitle.innerHTML = `📡 ${topic} <a href="${href}" target="_blank" style="font-size: 0.6em; color: #667eea; text-decoration: none;">${typeStr}</a>`;
+        }
+
+        if (!rosdistro) {
+            new ROSLIB.Param({ ros: ros, name: '/rosdistro'}).get(function(value) {
+                rosdistro = (value && value.trim) ? value.trim() : String(value || '');
+                updateHeader(rosdistro);
+            });
+        } else {
+            updateHeader(rosdistro);
+        }
     });
 
     new ROSLIB.Topic({ ros: ros, name: topic }).subscribe(function(msg) {
