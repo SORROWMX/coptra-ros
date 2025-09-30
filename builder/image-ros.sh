@@ -439,6 +439,8 @@ echo_stamp "Web files copied successfully to /var/www/ros/ (real files, not syml
     
     # Create nginx configuration for ROS
     echo_stamp "Creating nginx configuration"
+    # Ensure Coptra log exists and is readable by nginx
+    safe_install "touch /var/log/coptra.log && chmod 644 /var/log/coptra.log" "Ensure coptra log readable"
     safe_install "tee /etc/nginx/sites-available/ros > /dev/null << 'EOF'
 server {
     listen 80;
@@ -458,42 +460,41 @@ server {
     location = /coptra_blocks {
         return 301 /coptra_blocks/;
     }
-    # Serve live coptra log file
-    location = /coptra/coptra.log {
-        alias /var/log/coptra.log;
-        default_type text/plain;
-        add_header Cache-Control 'no-cache, no-store, must-revalidate';
-        add_header Access-Control-Allow-Origin "*";
-    }
-
     
-
     # Static files from coptra/www
     location /coptra/ {
         alias /var/www/ros/coptra/;
         index index.html;
-        try_files $uri $uri/ =404;
+        try_files \$uri \$uri/ =404;
     }
     
     # Static files from coptra_blocks/www
     location /coptra_blocks/ {
         alias /var/www/ros/coptra_blocks/;
         index index.html;
-        try_files $uri $uri/ =404;
+        try_files \$uri \$uri/ =404;
     }
     
     # For static files (CSS, JS, images)
-    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg)$ {
+    location ~* \\.(css|js|png|jpg|jpeg|gif|ico|svg)\$ {
         root /var/www/ros;
         expires 1y;
-        add_header Cache-Control 'public, immutable';
-        add_header Access-Control-Allow-Origin "*";
+        add_header Cache-Control \"public, immutable\";
+        add_header Access-Control-Allow-Origin \"*\";
     }
 
     # Add favicon
     location = /favicon.ico {
         alias /var/www/ros/coptra/coptra_icon_128.png;
         expires 1y;
+    }
+    
+    # Expose Coptra service log
+    location = /logs/coptra.log {
+        alias /var/log/coptra.log;
+        default_type text/plain;
+        add_header Access-Control-Allow-Origin "*";
+        add_header Cache-Control "no-store";
     }
     
     # CGI scripts for network management
@@ -508,7 +509,7 @@ server {
         add_header 'Access-Control-Max-Age' '3600' always;
         
         # Handle preflight OPTIONS requests
-        if ($request_method = 'OPTIONS') {
+        if (\$request_method = 'OPTIONS') {
             add_header 'Access-Control-Allow-Origin' '*' always;
             add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
             add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization, X-Requested-With' always;
@@ -520,7 +521,7 @@ server {
         
         fastcgi_pass unix:/var/run/fcgiwrap.socket;
         include /etc/nginx/fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME /usr/lib/cgi-bin$fastcgi_script_name;
+        fastcgi_param SCRIPT_FILENAME /usr/lib/cgi-bin\$fastcgi_script_name;
         
         # Security headers
         add_header 'X-Content-Type-Options' 'nosniff' always;
@@ -528,8 +529,7 @@ server {
         add_header 'X-XSS-Protection' '1; mode=block' always;
     }
 }
-EOF
-" "Create nginx ROS configuration"
+EOF" "Create nginx ROS configuration"
     
     # Create symbolic link (check if it exists first)
     if [ ! -L /etc/nginx/sites-enabled/ros ]; then
@@ -557,7 +557,6 @@ EOF
     safe_install "systemctl enable nginx" "Enable nginx"
     
     echo_stamp "Nginx configured successfully for ROS"
-
 fi
 
 echo_stamp "Make \$HOME/examples symlink"
@@ -814,14 +813,6 @@ if [ -f "/etc/nginx/sites-available/default" ]; then
     # Add coptra location blocks to default nginx config
     safe_install "tee -a /etc/nginx/sites-available/default > /dev/null << 'LOCATION_EOF'
 
-    # Serve live coptra log file
-    location = /coptra/coptra.log {
-        alias /var/log/coptra.log;
-        default_type text/plain;
-        add_header Cache-Control 'no-cache, no-store, must-revalidate';
-        add_header Access-Control-Allow-Origin "*";
-    }
-
     # Static files from coptra/www
     location /coptra/ {
         alias /var/www/ros/coptra/;
@@ -835,8 +826,15 @@ if [ -f "/etc/nginx/sites-available/default" ]; then
         index index.html;
         try_files \$uri \$uri/ =404;
     }
-LOCATION_EOF
-" "Add coptra location blocks to default nginx config"
+    
+    # Coptra service log
+    location = /logs/coptra.log {
+        alias /var/log/coptra.log;
+        default_type text/plain;
+        add_header Access-Control-Allow-Origin "*";
+        add_header Cache-Control "no-store";
+    }
+LOCATION_EOF" "Add coptra location blocks to default nginx config"
     echo_stamp "Added coptra location blocks to default nginx config"
 fi
 
