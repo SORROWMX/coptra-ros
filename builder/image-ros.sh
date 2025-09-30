@@ -462,7 +462,7 @@ server {
     location = /coptra/coptra.log {
         alias /var/log/coptra.log;
         default_type text/plain;
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Cache-Control 'no-cache, no-store, must-revalidate';
         add_header Access-Control-Allow-Origin "*";
     }
 
@@ -472,22 +472,22 @@ server {
     location /coptra/ {
         alias /var/www/ros/coptra/;
         index index.html;
-        try_files \$uri \$uri/ =404;
+        try_files $uri $uri/ =404;
     }
     
     # Static files from coptra_blocks/www
     location /coptra_blocks/ {
         alias /var/www/ros/coptra_blocks/;
         index index.html;
-        try_files \$uri \$uri/ =404;
+        try_files $uri $uri/ =404;
     }
     
     # For static files (CSS, JS, images)
-    location ~* \\.(css|js|png|jpg|jpeg|gif|ico|svg)\$ {
+    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg)$ {
         root /var/www/ros;
         expires 1y;
-        add_header Cache-Control \"public, immutable\";
-        add_header Access-Control-Allow-Origin \"*\";
+        add_header Cache-Control 'public, immutable';
+        add_header Access-Control-Allow-Origin "*";
     }
 
     # Add favicon
@@ -508,7 +508,7 @@ server {
         add_header 'Access-Control-Max-Age' '3600' always;
         
         # Handle preflight OPTIONS requests
-        if (\$request_method = 'OPTIONS') {
+        if ($request_method = 'OPTIONS') {
             add_header 'Access-Control-Allow-Origin' '*' always;
             add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
             add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization, X-Requested-With' always;
@@ -520,7 +520,7 @@ server {
         
         fastcgi_pass unix:/var/run/fcgiwrap.socket;
         include /etc/nginx/fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME /usr/lib/cgi-bin\$fastcgi_script_name;
+        fastcgi_param SCRIPT_FILENAME /usr/lib/cgi-bin$fastcgi_script_name;
         
         # Security headers
         add_header 'X-Content-Type-Options' 'nosniff' always;
@@ -528,7 +528,8 @@ server {
         add_header 'X-XSS-Protection' '1; mode=block' always;
     }
 }
-EOF" "Create nginx ROS configuration"
+EOF
+" "Create nginx ROS configuration"
     
     # Create symbolic link (check if it exists first)
     if [ ! -L /etc/nginx/sites-enabled/ros ]; then
@@ -817,7 +818,7 @@ if [ -f "/etc/nginx/sites-available/default" ]; then
     location = /coptra/coptra.log {
         alias /var/log/coptra.log;
         default_type text/plain;
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Cache-Control 'no-cache, no-store, must-revalidate';
         add_header Access-Control-Allow-Origin "*";
     }
 
@@ -834,7 +835,8 @@ if [ -f "/etc/nginx/sites-available/default" ]; then
         index index.html;
         try_files \$uri \$uri/ =404;
     }
-LOCATION_EOF" "Add coptra location blocks to default nginx config"
+LOCATION_EOF
+" "Add coptra location blocks to default nginx config"
     echo_stamp "Added coptra location blocks to default nginx config"
 fi
 
