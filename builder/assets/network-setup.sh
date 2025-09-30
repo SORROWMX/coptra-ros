@@ -26,17 +26,25 @@ ip route add 192.168.11.0/24 dev wlan0 2>/dev/null || true
 # Clear ARP cache to prevent stale entries
 ip neigh flush all 2>/dev/null || true
 
-# Ensure interface is properly up and in AP mode
+# Ensure interface is properly up
 ip link set wlan0 up 2>/dev/null || true
-iw dev wlan0 set type __ap 2>/dev/null || true
 
 echo_stamp "Network routing configured successfully"
 
-# Apply AP/DHCP fixes only if hostapd is intended to run (AP mode)
-CHANGED=false
-if systemctl is-active --quiet hostapd; then
+# Decide if AP mode is intended (e.g., hostapd service is enabled)
+AP_INTENT=false
+if systemctl is-enabled --quiet hostapd 2>/dev/null; then
+    AP_INTENT=true
+fi
+
+# Apply AP/DHCP fixes only when AP mode is intended
+if [ "$AP_INTENT" = true ]; then
+    echo_stamp "AP mode intended (hostapd enabled)"
+    CHANGED=false
+
     # Ensure regdomain is RU before manipulating AP
     iw reg set RU 2>/dev/null || true
+
     # Ensure hostapd has robust settings
     if [ -f /etc/hostapd/hostapd.conf ]; then
         grep -q '^country_code=' /etc/hostapd/hostapd.conf || echo 'country_code=RU' >> /etc/hostapd/hostapd.conf
@@ -52,11 +60,12 @@ if systemctl is-active --quiet hostapd; then
         grep -q '^ctrl_interface=/run/hostapd' /etc/hostapd/hostapd.conf || echo 'ctrl_interface=/run/hostapd' >> /etc/hostapd/hostapd.conf
         grep -q '^ctrl_interface_group=0' /etc/hostapd/hostapd.conf || echo 'ctrl_interface_group=0' >> /etc/hostapd/hostapd.conf
     fi
+
     # Ensure dnsmasq config for AP exists and is sane
     if [ ! -f /etc/dnsmasq.d/coptra.conf ]; then
-    echo_stamp "Creating /etc/dnsmasq.d/coptra.conf"
-    mkdir -p /etc/dnsmasq.d
-    cat << 'EOF' > /etc/dnsmasq.d/coptra.conf
+        echo_stamp "Creating /etc/dnsmasq.d/coptra.conf"
+        mkdir -p /etc/dnsmasq.d
+        cat << 'EOF' > /etc/dnsmasq.d/coptra.conf
 interface=wlan0
 bind-interfaces
 except-interface=end1
@@ -70,16 +79,16 @@ dhcp-range=192.168.11.100,192.168.11.200,12h
 dhcp-option=3,192.168.11.1
 dhcp-option=6,192.168.11.1
 EOF
-    CHANGED=true
+        CHANGED=true
     else
-    echo_stamp "dnsmasq AP config already present"
+        echo_stamp "dnsmasq AP config already present"
     fi
 
     # Comment out conflicting directives in /etc/dnsmasq.conf if any
     if grep -qE '^(interface|dhcp-|listen-address)' /etc/dnsmasq.conf 2>/dev/null; then
-    echo_stamp "Sanitizing /etc/dnsmasq.conf directives"
-    sed -i 's/^\(interface\|dhcp-\|listen-address\)/# &/' /etc/dnsmasq.conf || true
-    CHANGED=true
+        echo_stamp "Sanitizing /etc/dnsmasq.conf directives"
+        sed -i 's/^\(interface\|dhcp-\|listen-address\)/# &/' /etc/dnsmasq.conf || true
+        CHANGED=true
     fi
 
     # Ensure wlan0 static IP in dhcpcd.conf
@@ -95,25 +104,25 @@ EOF
         fi
     fi
 
-    # Ensure interface IP only if missing
+    # Ensure interface mode and IP
+    if ! iw dev wlan0 info 2>/dev/null | grep -q "type AP"; then
+        iw dev wlan0 set type __ap 2>/dev/null || true
+        CHANGED=true
+    fi
     if ! ip addr show wlan0 | grep -q "inet 192.168.11.1/24"; then
         ip addr flush dev wlan0 || true
         ip link set wlan0 down || true
         ip link set wlan0 up || true
-        iw dev wlan0 set type __ap || true
         ip addr add 192.168.11.1/24 dev wlan0 2>/dev/null || true
         CHANGED=true
     fi
 
-    # Check if dnsmasq is listening on DHCP
-    if ! ss -ulpn 2>/dev/null | grep -q ":67"; then
-        CHANGED=true
-    fi
+    # Always stop conflicting services in AP intent
+    systemctl stop NetworkManager 2>/dev/null || true
+    systemctl stop wpa_supplicant 2>/dev/null || true
 
-    # Apply restarts only if something changed
-    if [ "$CHANGED" = true ]; then
-        systemctl stop NetworkManager 2>/dev/null || true
-        systemctl stop wpa_supplicant 2>/dev/null || true
+    # Restart/start AP services as needed
+    if [ "$CHANGED" = true ] || ! systemctl is-active --quiet hostapd; then
         systemctl restart dhcpcd 2>/dev/null || true
         systemctl restart hostapd 2>/dev/null || true
         systemctl restart dnsmasq 2>/dev/null || true
@@ -122,14 +131,14 @@ EOF
         echo_stamp "No changes detected; skipping service restarts"
     fi
 else
-    echo_stamp "hostapd not active; skipping AP/DHCP adjustments (client/eth mode)"
+    echo_stamp "AP mode not intended; leaving client/eth networking as is"
 fi
 
-# Check if hostapd is running and configure if needed
+# Check status
 if systemctl is-active --quiet hostapd; then
     echo_stamp "hostapd is running, network setup complete"
 else
-    echo_stamp "hostapd not running, this is normal for client mode"
+    echo_stamp "hostapd not running"
 fi
 
 echo_stamp "Network setup service completed"
