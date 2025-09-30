@@ -167,6 +167,9 @@ case "$1" in
         echo "Switching to WiFi Access Point mode..."
         systemctl stop NetworkManager
         systemctl stop wpa_supplicant 2>/dev/null || true
+        ip link set wlan0 down
+        ip link set wlan0 up
+        iw dev wlan0 set type __ap
         systemctl start hostapd dnsmasq
         ip addr add 192.168.11.1/24 dev wlan0 2>/dev/null || true
         CURRENT_SSID=$(get_current_ssid)
@@ -233,6 +236,10 @@ systemctl daemon-reload
 
 # Set initial mode to Access Point
 systemctl stop NetworkManager
+systemctl stop wpa_supplicant 2>/dev/null || true
+ip link set wlan0 down
+ip link set wlan0 up
+iw dev wlan0 set type __ap
 systemctl start hostapd dnsmasq
 ip addr add 192.168.11.1/24 dev wlan0 2>/dev/null || true
 

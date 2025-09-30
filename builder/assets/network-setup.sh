@@ -26,8 +26,9 @@ ip route add 192.168.11.0/24 dev wlan0 2>/dev/null || true
 # Clear ARP cache to prevent stale entries
 ip neigh flush all 2>/dev/null || true
 
-# Ensure interface is properly up
+# Ensure interface is properly up and in AP mode
 ip link set wlan0 up 2>/dev/null || true
+iw dev wlan0 set type __ap 2>/dev/null || true
 
 echo_stamp "Network routing configured successfully"
 
@@ -97,7 +98,9 @@ EOF
     # Ensure interface IP only if missing
     if ! ip addr show wlan0 | grep -q "inet 192.168.11.1/24"; then
         ip addr flush dev wlan0 || true
+        ip link set wlan0 down || true
         ip link set wlan0 up || true
+        iw dev wlan0 set type __ap || true
         ip addr add 192.168.11.1/24 dev wlan0 2>/dev/null || true
         CHANGED=true
     fi
